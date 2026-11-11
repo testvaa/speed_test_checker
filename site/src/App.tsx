@@ -7,7 +7,7 @@ import { Button as Btn } from "@/components/ui/button";
 import { TypingAnimation } from "@/components/ui/typing-animation";
 import {
   Activity, Bot, ChevronDown, Clapperboard, Download, Gamepad2, Globe,
-  MapPin, Package, Palette, Star, Tags, Terminal, TrendingDown, Zap,
+  Languages, MapPin, Package, Palette, Star, Tags, Terminal, TrendingDown, Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -147,6 +147,7 @@ const features: [LucideIcon, string, string][] = [
   [Activity, "Монитор трафика", "Текущие скорости каждые 2 секунды, итоги за день и месяц, история ~3 месяца дней и ~2 года месяцев."],
   [MapPin, "Аналитика локаций VPN", "Каждый замер запоминает город сервера и AS-сеть — видно, через какой VPN шёл трафик и какая локация быстрее."],
   [Bot, "ИИ-агент на локальной модели", "Чат на дашборде: «сделай замер», «следи за router.local каждые 5 минут», архивы и настройки — модель крутится на вашей машине, ничего не уходит наружу."],
+  [Languages, "Русский / английский", "Кнопка EN/RU на дашборде или пункт в трее — весь интерфейс, уведомления и даже ИИ-агент переключаются на лету. При первой установке язык берётся из системы."],
   [Package, "Портативность", "Один бинарь (~10 МБ), без установки. Все данные — config.json, traffic.json, history.json — рядом с программой."],
   [Terminal, "Консольные режимы", "-once — полный отчёт в консоль без трея, -netmon — диагностика монитора трафика."],
 ];
@@ -210,6 +211,7 @@ const details: [string, React.ReactNode][] = [
   ["Зоны и уведомления", "границы «плохо/хорошо»; тосты: все / только проблемы / выкл"],
   ["Монитор трафика", "счётчики сетевых интерфейсов (gopsutil), опрос раз в 2 с"],
   ["ИИ-агент", "локальная LFM3-1.7B через llama.cpp (Metal/Vulkan/CPU), инструменты: замер, наблюдение за хостами (ICMP), архив, настройки"],
+  ["Язык интерфейса", "русский / английский — кнопка EN/RU на дашборде, Настройки → Язык в трее; по умолчанию — язык системы"],
   ["Дашборд", "встроенная страница (go:embed), HTTP только на 127.0.0.1:8787+"],
   ["Данные", "config.json · traffic.json · history.json — рядом с exe, переносятся копированием; история до 200 проверок"],
   ["Сборка из исходников", 'go build -trimpath -ldflags "-s -w -H=windowsgui" -o SpeedTestTray.exe . (Windows; Linux/macOS собирает CI)'],
@@ -260,7 +262,7 @@ function Footer() {
   return (
     <footer className="mt-5 border-t border-line pb-11 pt-7">
       <div className="mx-auto flex max-w-[960px] flex-wrap items-center gap-[18px] px-5 font-mono text-[12.5px] text-dimmer">
-        <span>Speed Test Tray · v1.0.0 · Windows / macOS / Linux</span>
+        <span>Speed Test Tray · v1.1.0 · Windows / macOS / Linux · RU / EN</span>
         <a className={a} href={GH}>GitHub</a>
         <a className={a} href={GH + "/releases"}>Релизы</a>
         <a className={a} href={GH + "/issues"}>Issues</a>
