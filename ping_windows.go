@@ -39,10 +39,10 @@ type icmpEchoReply struct {
 }
 
 var icmpStatuses = map[uint32]string{
-	11003: "хост недоступен",
-	11004: "хост недоступен",
-	11010: "таймаут",
-	11050: "общая ошибка ICMP",
+	11003: "icmp_unreachable",
+	11004: "icmp_unreachable",
+	11010: "icmp_timeout",
+	11050: "icmp_general",
 }
 
 func pingOnce(host string, timeout time.Duration) (int, error) {
@@ -50,7 +50,7 @@ func pingOnce(host string, timeout time.Duration) (int, error) {
 	if ip == nil {
 		addrs, err := net.LookupIP(host)
 		if err != nil {
-			return -1, fmt.Errorf("не удалось разрешить %s: %w", host, err)
+			return -1, fmt.Errorf(T("ping_resolve_err"), host, err)
 		}
 		for _, a := range addrs {
 			if v4 := a.To4(); v4 != nil {
@@ -59,17 +59,17 @@ func pingOnce(host string, timeout time.Duration) (int, error) {
 			}
 		}
 		if ip == nil {
-			return -1, fmt.Errorf("%s: нет IPv4-адреса", host)
+			return -1, fmt.Errorf(T("ping_no_ipv4"), host)
 		}
 	}
 	b4 := ip.To4()
 	if b4 == nil {
-		return -1, fmt.Errorf("%s: нужен IPv4-адрес", host)
+		return -1, fmt.Errorf(T("ping_need_ipv4"), host)
 	}
 
 	handle, _, _ := procIcmpCreateFile.Call()
 	if handle == 0 || handle == ^uintptr(0) {
-		return -1, fmt.Errorf("IcmpCreateFile: отказано")
+		return -1, fmt.Errorf("%s", T("ping_icmp_denied"))
 	}
 	defer procIcmpCloseHandle.Call(handle)
 
@@ -88,14 +88,14 @@ func pingOnce(host string, timeout time.Duration) (int, error) {
 		uintptr(timeout.Milliseconds()),
 	)
 	if r == 0 {
-		return -1, fmt.Errorf("нет ответа")
+		return -1, fmt.Errorf("%s", T("ping_no_reply"))
 	}
 	reply := (*icmpEchoReply)(unsafe.Pointer(&buf[0]))
 	if reply.Status != 0 {
 		if s, ok := icmpStatuses[reply.Status]; ok {
-			return -1, fmt.Errorf("%s", s)
+			return -1, fmt.Errorf("%s", T(s))
 		}
-		return -1, fmt.Errorf("нет ответа (ICMP-статус %d)", reply.Status)
+		return -1, fmt.Errorf(T("ping_icmp_status"), reply.Status)
 	}
 	return int(reply.RTT), nil
 }

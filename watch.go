@@ -116,7 +116,7 @@ func validHost(s string) bool {
 // (для инструмента ping_host).
 func (w *WatchMon) PingHost(host string, count int) (string, error) {
 	if !validHost(host) {
-		return "", fmt.Errorf("некорректный хост %q", host)
+		return "", fmt.Errorf(T("err_bad_host"), host)
 	}
 	if count <= 0 || count > 10 {
 		count = 4
@@ -140,13 +140,13 @@ func (w *WatchMon) PingHost(host string, count int) (string, error) {
 		}
 	}
 	if ok == 0 {
-		return fmt.Sprintf("%s: нет ответа (%d из %d попыток)%s",
+		return fmt.Sprintf(T("ping_summary_fail"),
 			host, fail, count, suffixErr(lastErr)), nil
 	}
-	out := fmt.Sprintf("%s: отклик %d/%d, среднее %d мс (мин %d, макс %d)",
+	out := fmt.Sprintf(T("ping_summary_ok"),
 		host, ok, count, sum/ok, min, max)
 	if fail > 0 {
-		out += fmt.Sprintf(", потеряно %d", fail)
+		out += fmt.Sprintf(T("ping_summary_lost"), fail)
 	}
 	return out, nil
 }
@@ -161,7 +161,7 @@ func suffixErr(s string) string {
 // Watch — завести или изменить наблюдение (инструмент watch_host).
 func (w *WatchMon) Watch(host string, minutes int) (string, error) {
 	if !validHost(host) {
-		return "", fmt.Errorf("некорректный хост %q", host)
+		return "", fmt.Errorf(T("err_bad_host"), host)
 	}
 	if minutes <= 0 || minutes > 1440 {
 		minutes = 5
@@ -175,7 +175,7 @@ func (w *WatchMon) Watch(host string, minutes int) (string, error) {
 	j.IntervalMin = minutes
 	w.mu.Unlock()
 	w.Save()
-	return fmt.Sprintf("Наблюдаю за %s каждые %d мин.", host, minutes), nil
+	return fmt.Sprintf(T("watch_started"), host, minutes), nil
 }
 
 // Unwatch — остановить наблюдение (инструмент unwatch_host).
@@ -186,9 +186,9 @@ func (w *WatchMon) Unwatch(host string) (string, error) {
 	w.mu.Unlock()
 	w.Save()
 	if !ok {
-		return "", fmt.Errorf("хост %s не наблюдается", host)
+		return "", fmt.Errorf(T("watch_not_found"), host)
 	}
-	return fmt.Sprintf("Наблюдение за %s остановлено.", host), nil
+	return fmt.Sprintf(T("watch_stopped"), host), nil
 }
 
 // UnwatchAll — остановить все наблюдения (инструмент unwatch_all).
@@ -199,9 +199,9 @@ func (w *WatchMon) UnwatchAll() (string, error) {
 	w.mu.Unlock()
 	w.Save()
 	if n == 0 {
-		return "Активных наблюдений не было.", nil
+		return T("watch_none"), nil
 	}
-	return fmt.Sprintf("Остановлены все наблюдения (%d).", n), nil
+	return fmt.Sprintf(T("watch_stopped_all"), n), nil
 }
 
 // List — снимок всех наблюдений (для /api/state).

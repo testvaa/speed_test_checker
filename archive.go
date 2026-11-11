@@ -161,24 +161,23 @@ func (d *Dashboard) archiveBytes() ([]byte, int, int, error) {
 // ExportArchiveFile сохраняет архив рядом с config.json (для ИИ-агента)
 // и возвращает готовое человекочитаемое сообщение.
 func (d *Dashboard) ExportArchiveFile(path string) (string, error) {
-	d.setArchBusy("export", "собираю данные")
+	d.setArchBusy("export", T("arch_collect"))
 	data, n, tdays, err := d.archiveBytes()
 	if err != nil {
-		d.setArchErr("экспорт: " + err.Error())
+		d.setArchErr(T("arch_export_err", err.Error()))
 		return "", err
 	}
-	d.setArchProg("записываю файл", 0.5, 0, 0)
+	d.setArchProg(T("arch_write_file"), 0.5, 0, 0)
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		d.setArchErr("экспорт: " + err.Error())
+		d.setArchErr(T("arch_export_err", err.Error()))
 		return "", err
 	}
 	if err := os.Rename(tmp, path); err != nil {
-		d.setArchErr("экспорт: " + err.Error())
+		d.setArchErr(T("arch_export_err", err.Error()))
 		return "", err
 	}
-	msg := fmt.Sprintf("Архив сохранён: %s — %d замеров, трафик за %d дн.",
-		filepath.Base(path), n, tdays)
+	msg := fmt.Sprintf(T("arch_saved"), filepath.Base(path), n, tdays)
 	d.setArchDone(msg)
 	return msg, nil
 }
@@ -193,7 +192,7 @@ func (d *Dashboard) ImportArchive(rd io.Reader, mode string) (importResult, erro
 		return res, err
 	}
 	if len(data) > archMaxBytes {
-		return res, fmt.Errorf("архив больше %d МБ", archMaxBytes>>20)
+		return res, fmt.Errorf(T("arch_too_big"), archMaxBytes>>20)
 	}
 
 	// шапка: доверие формату проверяем до всего остального
@@ -205,17 +204,17 @@ func (d *Dashboard) ImportArchive(rd io.Reader, mode string) (importResult, erro
 			continue
 		}
 		if err := json.Unmarshal([]byte(ln), &head); err != nil || head.Kind != archKind {
-			return res, fmt.Errorf("это не архив SpeedTestTray (строка %d)", i+1)
+			return res, fmt.Errorf(T("arch_not_ours"), i+1)
 		}
 		raw = raw[i+1:]
 		break
 	}
 	if head.V != archVersion {
-		return res, fmt.Errorf("версия архива %d не поддерживается", head.V)
+		return res, fmt.Errorf(T("arch_bad_ver"), head.V)
 	}
 
 	if mode == "overwrite" || mode == "skip" {
-		d.setArchBusy("import", "читаю строки")
+		d.setArchBusy("import", T("arch_read_lines"))
 	}
 
 	// проход 1: построчная проверка и сбор валидных данных
@@ -231,7 +230,7 @@ func (d *Dashboard) ImportArchive(rd io.Reader, mode string) (importResult, erro
 			continue
 		}
 		if mode == "overwrite" || mode == "skip" {
-			d.setArchProg("читаю строки", float64(i)/float64(res.Lines), i, res.Lines)
+			d.setArchProg(T("arch_read_lines"), float64(i)/float64(res.Lines), i, res.Lines)
 		}
 		var probe struct {
 			Kind string `json:"kind"`
@@ -275,7 +274,7 @@ func (d *Dashboard) ImportArchive(rd io.Reader, mode string) (importResult, erro
 	}
 	res.Checks = len(incoming)
 	if res.Checks == 0 && traf == nil {
-		return res, fmt.Errorf("в архиве нет данных (битых строк: %d)", res.Invalid)
+		return res, fmt.Errorf(T("arch_empty"), res.Invalid)
 	}
 	res.From, res.To = from.Format("02.01 15:04"), to.Format("02.01 15:04")
 	if traf != nil {
@@ -297,8 +296,7 @@ func (d *Dashboard) ImportArchive(rd io.Reader, mode string) (importResult, erro
 
 	if mode == "check" {
 		res.OK = true
-		res.Message = fmt.Sprintf("В архиве %d замеров (%s – %s), пересекается с историей: %d. "+
-			"Спросите пользователя: перезаписать совпавшие или пропустить их?",
+		res.Message = fmt.Sprintf(T("arch_check_msg"),
 			res.Checks, res.From, res.To, res.Overlap)
 		return res, nil
 	}
@@ -307,7 +305,7 @@ func (d *Dashboard) ImportArchive(rd io.Reader, mode string) (importResult, erro
 	overwrite := mode == "overwrite"
 	d.mu.Lock()
 	for i, e := range incoming {
-		d.setArchProg("записываю строки", float64(i)/float64(len(incoming)), i, len(incoming))
+		d.setArchProg(T("arch_write_lines"), float64(i)/float64(len(incoming)), i, len(incoming))
 		idx := -1
 		for j := range d.history {
 			if d.history[j].TS.Unix() == e.TS.Unix() {
@@ -339,13 +337,12 @@ func (d *Dashboard) ImportArchive(rd io.Reader, mode string) (importResult, erro
 			d.net.MergeTraffic(TrafficStore{Days: traf.Days, Months: traf.Months}, overwrite)
 		d.net.Save()
 	}
-	d.setArchDone(fmt.Sprintf("Загружено: +%d, перезаписано %d, пропущено %d, битых %d",
+	d.setArchDone(fmt.Sprintf(T("arch_loaded"),
 		res.Added, res.Replaced, res.Skipped, res.Invalid))
 
 	res.OK = true
 	res.Applied = true
-	res.Message = fmt.Sprintf("Загружено: добавлено %d, перезаписано %d, пропущено %d, "+
-		"битых строк %d. Трафик: новых дней %d, обновлено %d.",
+	res.Message = fmt.Sprintf(T("arch_loaded_full"),
 		res.Added, res.Replaced, res.Skipped, res.Invalid, res.TrafficAdded, res.TrafficReplaced)
 	return res, nil
 }
@@ -356,14 +353,14 @@ func (d *Dashboard) ImportArchiveFile(path, mode string) (string, error) {
 	switch mode {
 	case "check", "overwrite", "skip":
 	default:
-		return "", fmt.Errorf("режим %q не поддерживается (check/overwrite/skip)", mode)
+		return "", fmt.Errorf(T("arch_bad_mode"), mode)
 	}
 	st, err := os.Stat(path)
 	if err != nil {
-		return "", fmt.Errorf("файл не найден: %s", path)
+		return "", fmt.Errorf(T("arch_no_file"), path)
 	}
 	if st.Size() > archMaxBytes {
-		return "", fmt.Errorf("файл больше %d МБ", archMaxBytes>>20)
+		return "", fmt.Errorf(T("arch_file_big"), archMaxBytes>>20)
 	}
 	f, err := os.Open(path)
 	if err != nil {
@@ -394,13 +391,13 @@ func validEntry(e *dashEntry) bool {
 func (d *Dashboard) serveArchiveExport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "только GET", http.StatusMethodNotAllowed)
+		http.Error(w, T("err_get_only"), http.StatusMethodNotAllowed)
 		return
 	}
-	d.setArchBusy("export", "собираю данные")
+	d.setArchBusy("export", T("arch_collect"))
 	data, n, tdays, err := d.archiveBytes()
 	if err != nil {
-		d.setArchErr("экспорт: " + err.Error())
+		d.setArchErr(T("arch_export_err", err.Error()))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -408,7 +405,7 @@ func (d *Dashboard) serveArchiveExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/jsonl; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
 	w.Header().Set("Cache-Control", "no-store")
-	d.setArchDone(fmt.Sprintf("Готово: %d замеров, %d дн. трафика", n, tdays))
+	d.setArchDone(T("arch_done", n, tdays))
 	_, _ = w.Write(data)
 }
 
@@ -416,7 +413,7 @@ func (d *Dashboard) serveArchiveExport(w http.ResponseWriter, r *http.Request) {
 func (d *Dashboard) serveArchiveImport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "только POST", http.StatusMethodNotAllowed)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
 		return
 	}
 	mode := r.URL.Query().Get("mode")

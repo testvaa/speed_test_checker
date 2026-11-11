@@ -277,29 +277,20 @@ func pruneStore(m map[string][2]int64, n int) {
 	}
 }
 
-// fmtBytes — человекочитаемый объём: КБ/МБ/ГБ/ТБ.
+// fmtBytes — человекочитаемый объём: КБ/МБ/ГБ/ТБ (единицы — по языку).
 func fmtBytes(b int64) string {
 	switch {
 	case b >= 1<<40:
-		return fmt.Sprintf("%.2f ТБ", float64(b)/(1<<40))
+		return fmt.Sprintf(T("byte_tb"), float64(b)/(1<<40))
 	case b >= 1<<30:
-		return fmt.Sprintf("%.2f ГБ", float64(b)/(1<<30))
+		return fmt.Sprintf(T("byte_gb"), float64(b)/(1<<30))
 	case b >= 1<<20:
-		return fmt.Sprintf("%.1f МБ", float64(b)/(1<<20))
+		return fmt.Sprintf(T("byte_mb"), float64(b)/(1<<20))
 	case b >= 1<<10:
-		return fmt.Sprintf("%.1f КБ", float64(b)/(1<<10))
+		return fmt.Sprintf(T("byte_kb"), float64(b)/(1<<10))
 	default:
-		return fmt.Sprintf("%d Б", b)
+		return fmt.Sprintf(T("byte_b"), b)
 	}
-}
-
-var monthNamesRU = []string{
-	"Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-	"Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
-}
-
-func monthNameRU(t time.Time) string {
-	return monthNamesRU[int(t.Month())-1]
 }
 
 // trafficPath кладёт traffic.json в тот же каталог, что и config.json.

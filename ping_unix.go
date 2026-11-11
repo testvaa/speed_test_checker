@@ -36,23 +36,23 @@ func pingOnce(host string, timeout time.Duration) (int, error) {
 
 	out, err := cmd.CombinedOutput()
 	if ctx.Err() != nil {
-		return -1, fmt.Errorf("таймаут")
+		return -1, fmt.Errorf(T("icmp_timeout"))
 	}
 	if err != nil {
 		// ping возвращает ошибку и при потере пакета — смотрим, есть ли RTT
 		if m := pingRTTRe.FindSubmatch(out); m != nil {
 			// пакет ушёл и вернулся, несмотря на код возврата
 		} else {
-			return -1, fmt.Errorf("нет ответа")
+			return -1, fmt.Errorf(T("ping_no_reply"))
 		}
 	}
 	m := pingRTTRe.FindSubmatch(out)
 	if m == nil {
-		return -1, fmt.Errorf("нет ответа")
+		return -1, fmt.Errorf(T("ping_no_reply"))
 	}
 	f, err := strconv.ParseFloat(string(m[1]), 64)
 	if err != nil {
-		return -1, fmt.Errorf("нет ответа")
+		return -1, fmt.Errorf(T("ping_no_reply"))
 	}
 	return int(f + 0.5), nil
 }

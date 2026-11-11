@@ -84,6 +84,7 @@ type Dashboard struct {
 
 	onRun     func()
 	onNetRate func(int)
+	onLang    func(string)
 }
 
 // SetAgent подключает агента (вызывается один раз при старте приложения).
@@ -157,6 +158,7 @@ func (d *Dashboard) Start() {
 		mux.HandleFunc("/api/state", d.serveState)
 		mux.HandleFunc("/api/run", d.serveRun)
 		mux.HandleFunc("/api/netrate", d.serveNetRate)
+		mux.HandleFunc("/api/lang", d.serveLang)
 		mux.HandleFunc("/api/procnet", d.serveProcNet)
 		mux.HandleFunc("/api/agent", d.serveAgent)
 		mux.HandleFunc("/api/agent/init", d.serveAgentInit)
@@ -172,7 +174,7 @@ func (d *Dashboard) Start() {
 		go func() {
 			_ = http.Serve(ln, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Host != fmt.Sprintf("127.0.0.1:%d", port) && r.Host != "localhost" {
-					http.Error(w, "доступ только с этого компьютера", http.StatusForbidden)
+					http.Error(w, T("err_local_only"), http.StatusForbidden)
 					return
 				}
 				mux.ServeHTTP(w, r)
@@ -180,8 +182,7 @@ func (d *Dashboard) Start() {
 		}()
 		return
 	}
-	fmt.Fprintf(os.Stderr, "dashboard: порты %d–%d заняты, дашборд выключен\n",
-		dashBasePort, dashBasePort+dashPortSpan-1)
+	fmt.Fprintln(os.Stderr, T("dash_ports_busy", dashBasePort, dashBasePort+dashPortSpan-1))
 }
 
 // URL возвращает адрес дашборда (пустая строка — сервер не запущен).
@@ -305,6 +306,7 @@ type dashState struct {
 	BadMbps     float64      `json:"badMbps"`
 	GoodMbps    float64      `json:"goodMbps"`
 	NetRateMs   int          `json:"netRateMs"`
+	Lang        string       `json:"lang"`
 	Watch       []WatchJob   `json:"watch,omitempty"`
 	Agent       *agentStatus `json:"agent,omitempty"`
 }
@@ -324,6 +326,7 @@ func (d *Dashboard) serveState(w http.ResponseWriter, r *http.Request) {
 		BadMbps:     d.badMbps,
 		GoodMbps:    d.goodMbps,
 		NetRateMs:   d.netRateMs,
+		Lang:        Lang(),
 	}
 	for _, p := range d.series {
 		st.Series = append(st.Series, [3]float64{float64(p.T.UnixMilli()), p.Down, p.Up})
@@ -349,18 +352,18 @@ func (d *Dashboard) serveState(w http.ResponseWriter, r *http.Request) {
 func (d *Dashboard) serveRun(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "только POST", http.StatusMethodNotAllowed)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
 		return
 	}
 	d.mu.Lock()
 	run, checking := d.onRun, d.checking
 	d.mu.Unlock()
 	if checking {
-		http.Error(w, "проверка уже идёт", http.StatusConflict)
+		http.Error(w, T("err_check_running"), http.StatusConflict)
 		return
 	}
 	if run == nil {
-		http.Error(w, "недоступно", http.StatusServiceUnavailable)
+		http.Error(w, T("err_unavailable"), http.StatusServiceUnavailable)
 		return
 	}
 	run()
@@ -372,7 +375,7 @@ func (d *Dashboard) serveRun(w http.ResponseWriter, r *http.Request) {
 func (d *Dashboard) serveHistoryClear(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "только POST", http.StatusMethodNotAllowed)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
 		return
 	}
 	d.mu.Lock()
@@ -387,24 +390,53 @@ func (d *Dashboard) serveHistoryClear(w http.ResponseWriter, r *http.Request) {
 func (d *Dashboard) serveNetRate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "только POST", http.StatusMethodNotAllowed)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
 		return
 	}
 	var req struct {
 		Ms int `json:"ms"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "плохой json", http.StatusBadRequest)
+		http.Error(w, T("err_bad_json"), http.StatusBadRequest)
 		return
 	}
 	d.mu.Lock()
 	fn := d.onNetRate
 	d.mu.Unlock()
 	if fn == nil {
-		http.Error(w, "недоступно", http.StatusServiceUnavailable)
+		http.Error(w, T("err_unavailable"), http.StatusServiceUnavailable)
 		return
 	}
 	fn(nearestNetRateMs(req.Ms))
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// serveLang переключает язык интерфейса (кнопка EN/RU на дашборде).
+func (d *Dashboard) serveLang(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Lang string `json:"lang"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, T("err_bad_json"), http.StatusBadRequest)
+		return
+	}
+	if req.Lang != LangRu && req.Lang != LangEn {
+		http.Error(w, T("err_bad_lang"), http.StatusBadRequest)
+		return
+	}
+	d.mu.Lock()
+	fn := d.onLang
+	d.mu.Unlock()
+	if fn == nil {
+		http.Error(w, T("err_unavailable"), http.StatusServiceUnavailable)
+		return
+	}
+	fn(req.Lang)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -423,7 +455,7 @@ func (d *Dashboard) agentOf(w http.ResponseWriter) *Agent {
 	a := d.agent
 	d.mu.Unlock()
 	if a == nil {
-		http.Error(w, "агент недоступен", http.StatusServiceUnavailable)
+		http.Error(w, T("err_agent_unavailable"), http.StatusServiceUnavailable)
 		return nil
 	}
 	return a
@@ -455,7 +487,7 @@ func (d *Dashboard) serveAgent(w http.ResponseWriter, r *http.Request) {
 func (d *Dashboard) serveAgentInit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "только POST", http.StatusMethodNotAllowed)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
 		return
 	}
 	a := d.agentOf(w)
@@ -470,7 +502,7 @@ func (d *Dashboard) serveAgentInit(w http.ResponseWriter, r *http.Request) {
 func (d *Dashboard) serveAgentStop(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "только POST", http.StatusMethodNotAllowed)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
 		return
 	}
 	a := d.agentOf(w)
@@ -485,7 +517,7 @@ func (d *Dashboard) serveAgentStop(w http.ResponseWriter, r *http.Request) {
 func (d *Dashboard) serveAgentChat(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "только POST", http.StatusMethodNotAllowed)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
 		return
 	}
 	a := d.agentOf(w)
@@ -496,7 +528,7 @@ func (d *Dashboard) serveAgentChat(w http.ResponseWriter, r *http.Request) {
 		Message string `json:"message"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 16<<10)).Decode(&req); err != nil {
-		http.Error(w, "плохой json", http.StatusBadRequest)
+		http.Error(w, T("err_bad_json"), http.StatusBadRequest)
 		return
 	}
 	msgs, err := a.Chat(req.Message)

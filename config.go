@@ -20,6 +20,7 @@ type Config struct {
 	NotifyMode    string  `json:"notify_mode"`    // all / problems / off
 	TimeoutSec    int     `json:"timeout_sec"`    // таймаут каждого этапа, секунд
 	NetRateMs     int     `json:"net_rate_ms"`    // частота опроса сети/обновления живого графика, мс
+	Lang          string  `json:"lang"`           // язык интерфейса: ru / en (нет поля — по языку ОС)
 
 	// ИИ-агент: локальный llama-server + модель (запускается по кнопке на дашборде).
 	AgentLlamaServer string `json:"agent_llama_server"` // путь до llama-server.exe (относительно exe или абсолютный)
@@ -122,6 +123,11 @@ func (c *Config) normalize() {
 	}
 	c.TimeoutSec = clampInt(c.TimeoutSec, 5, 600)
 	c.NetRateMs = nearestNetRateMs(c.NetRateMs)
+	switch c.Lang {
+	case LangRu, LangEn:
+	default:
+		c.Lang = DetectLang()
+	}
 	if c.AgentLlamaServer == "" {
 		c.AgentLlamaServer = d.AgentLlamaServer
 	}
@@ -184,16 +190,17 @@ func LoadConfig(create bool) (*Config, string) {
 	data, err := os.ReadFile(path)
 	if err == nil {
 		if err := json.Unmarshal(data, &cfg); err != nil {
-			fmt.Fprintf(os.Stderr, "config: не разобран %s (%v), использую значения по умолчанию\n", path, err)
+			fmt.Fprintln(os.Stderr, T("cfg_parse_err", path, err))
 			cfg = defaultConfig()
 		}
 	} else if !os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "config: не прочитан %s (%v)\n", path, err)
+		fmt.Fprintln(os.Stderr, T("cfg_read_err", path, err))
 	}
 	cfg.normalize()
+	SetLang(cfg.Lang)
 	if create && os.IsNotExist(err) {
 		if err := cfg.Save(path); err != nil {
-			fmt.Fprintf(os.Stderr, "config: не записан %s (%v)\n", path, err)
+			fmt.Fprintln(os.Stderr, T("cfg_write_err", path, err))
 		}
 	}
 	return &cfg, path

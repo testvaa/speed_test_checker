@@ -181,7 +181,7 @@ func (a *Agent) Init() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	a.dlCtx, a.dlCancel = ctx, cancel
-	a.status = agentStatus{Status: "starting", Phase: "проверяю llama-server", Step: -1}
+	a.status = agentStatus{Status: "starting", Phase: T("ag_check_server"), Step: -1}
 	a.stopOnce = sync.Once{}
 	exe, model, port, baseURL := a.exePath, a.modelPath, a.port, a.baseURL
 	a.mu.Unlock()
@@ -191,29 +191,29 @@ func (a *Agent) Init() {
 		if agentHealthOK(baseURL, 1200*time.Millisecond) {
 			// короткая пауза: оверлей успевает показать «подключаюсь»,
 			// иначе подхват проскакивает мимо анимации
-			a.setStep(2, "подключаюсь к llama-server")
+			a.setStep(2, T("ag_connect"))
 			time.Sleep(1500 * time.Millisecond)
-			a.setReady(modelDisplayName(model), "подхвачен работающий llama-server")
+			a.setReady(modelDisplayName(model), T("ag_attached"))
 			return
 		}
 		// 2. Чего-то нет — докачаем: сервер с GitHub, модель с HuggingFace.
-		a.setStep(0, "проверяю файлы агента")
+		a.setStep(0, T("ag_check_files"))
 		if _, err := os.Stat(exe); err != nil {
 			if err := a.fetchServer(exe); err != nil {
-				a.failDL(ctx, "не удалось получить llama-server: ", err)
+				a.failDL(ctx, T("ag_get_server"), err)
 				return
 			}
 		}
-		a.setStep(1, "проверяю модель")
+		a.setStep(1, T("ag_check_model"))
 		if _, err := os.Stat(model); err != nil {
 			if err := a.fetchModel(model); err != nil {
-				a.failDL(ctx, "не удалось получить модель: ", err)
+				a.failDL(ctx, T("ag_get_model"), err)
 				return
 			}
 		}
 		// 3. Стартуем процесс (консольное окно скрыто).
 		devArgs, gpuLabel := a.resolveGPU(exe)
-		a.setStep(2, "запускаю llama-server ("+gpuLabel+")")
+		a.setStep(2, T("ag_start_server", gpuLabel))
 		args := []string{"-m", model,
 			"--port", fmt.Sprint(port),
 			"--ctx-size", "4096",
@@ -222,7 +222,7 @@ func (a *Agent) Init() {
 		cmd := exec.Command(exe, append(args, devArgs...)...)
 		cmd.SysProcAttr = hideConsoleSysProcAttr()
 		if err := cmd.Start(); err != nil {
-			a.setError("не удалось запустить llama-server: " + err.Error())
+			a.setError(T("ag_start_err") + err.Error())
 			return
 		}
 		a.mu.Lock()
@@ -230,7 +230,7 @@ func (a *Agent) Init() {
 		a.mu.Unlock()
 
 		// 4. Ждём готовности (модель грузится в память до ~минуты на CPU).
-		a.setPhase("загружаю модель, это займёт до минуты")
+		a.setPhase(T("ag_load_model"))
 		deadline := time.Now().Add(3 * time.Minute)
 		for time.Now().Before(deadline) {
 			if agentHealthOK(baseURL, 1200*time.Millisecond) {
@@ -243,12 +243,12 @@ func (a *Agent) Init() {
 			a.mu.Unlock()
 			if done {
 				_ = cmd.Wait()
-				a.setError("llama-server завершился раньше готовности — проверьте пути и порт " + fmt.Sprint(port))
+				a.setError(T("ag_died", fmt.Sprint(port)))
 				return
 			}
 			time.Sleep(700 * time.Millisecond)
 		}
-		a.setError("llama-server не ответил за 3 минуты")
+		a.setError(T("ag_timeout"))
 	}()
 }
 
@@ -330,10 +330,10 @@ func (a *Agent) fetchServer(exe string) error {
 	if strings.HasSuffix(archURL, ".tar.gz") {
 		archPath = filepath.Join(dir, "llama-server.tar.gz")
 	}
-	if err := a.download(archURL, archPath, "скачиваю llama.cpp"); err != nil {
+	if err := a.download(archURL, archPath, T("ag_dl_server")); err != nil {
 		return err
 	}
-	a.setPhase("распаковываю llama.cpp")
+	a.setPhase(T("ag_unpack"))
 	if strings.HasSuffix(archPath, ".tar.gz") {
 		if err := untargz(archPath, dir); err != nil {
 			return err
@@ -345,7 +345,7 @@ func (a *Agent) fetchServer(exe string) error {
 	}
 	_ = os.Remove(archPath)
 	if _, err := os.Stat(exe); err != nil {
-		return fmt.Errorf("в архиве нет %s", serverExeName())
+		return fmt.Errorf(T("ag_no_exe"), serverExeName())
 	}
 	return nil
 }
@@ -355,7 +355,7 @@ func (a *Agent) fetchModel(model string) error {
 	if err := os.MkdirAll(filepath.Dir(model), 0o755); err != nil {
 		return err
 	}
-	return a.download(agentModelURL, model, "скачиваю модель")
+	return a.download(agentModelURL, model, T("ag_dl_model"))
 }
 
 // download качает url в dst, показывая фазу и прогресс (0..1) в статусе.
@@ -432,7 +432,7 @@ func (a *Agent) download(url, dst, phase string) error {
 				if total > 0 {
 					frac = float64(soFar) / float64(total)
 				}
-				a.setPhaseProg(fmt.Sprintf("%s: %d из %d МБ", phase, soFar>>20, total>>20), frac)
+				a.setPhaseProg(fmt.Sprintf(T("ag_dl_prog"), phase, soFar>>20, total>>20), frac)
 			}
 		}
 		if rerr == io.EOF {
@@ -448,7 +448,7 @@ func (a *Agent) download(url, dst, phase string) error {
 	}
 	if total > 0 && done+got < total {
 		f.Close()
-		return fmt.Errorf("недокачано: %d из %d МБ", (done+got)>>20, total>>20)
+		return fmt.Errorf(T("ag_dl_short"), (done+got)>>20, total>>20)
 	}
 	// Windows не переименует открытый файл — закрываем явно
 	if err := f.Close(); err != nil {
@@ -637,65 +637,123 @@ func (a *Agent) SetMetaProvider(f func() agentMeta) {
 // agentToolMsg — сообщение wire-диалога (включая tool-вызовы).
 type agentToolMsg = map[string]any
 
-// agentTools — описание инструментов для llama-server (нативный tool calling).
-var agentTools = []map[string]any{
-	{"type": "function", "function": map[string]any{
-		"name": "run_check", "description": "Сделать замер скорости интернета прямо сейчас и вернуть результат",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{}}}},
-	{"type": "function", "function": map[string]any{
-		"name": "set_interval", "description": "Изменить период автопроверок в минутах (5–180)",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{
-			"minutes": map[string]any{"type": "integer", "description": "минуты"}},
-			"required": []string{"minutes"}}}},
-	{"type": "function", "function": map[string]any{
-		"name": "set_download_mb", "description": "Объём теста загрузки в МБ (5–200)",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{
-			"mb": map[string]any{"type": "integer", "description": "МБ"}},
-			"required": []string{"mb"}}}},
-	{"type": "function", "function": map[string]any{
-		"name": "set_upload_mb", "description": "Объём теста отдачи в МБ (5–200)",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{
-			"mb": map[string]any{"type": "integer", "description": "МБ"}},
-			"required": []string{"mb"}}}},
-	{"type": "function", "function": map[string]any{
-		"name": "set_limits", "description": "Границы зон оценки: «плохо» ниже bad, «хорошо» выше good, Мбит/с",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{
-			"bad": map[string]any{"type": "number"}, "good": map[string]any{"type": "number"}},
-			"required": []string{"bad", "good"}}}},
-	{"type": "function", "function": map[string]any{
-		"name": "set_net_rate", "description": "Частота обновления живого графика, мс: 1000, 2000, 5000 или 10000",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{
-			"ms": map[string]any{"type": "integer"}},
-			"required": []string{"ms"}}}},
-	{"type": "function", "function": map[string]any{
-		"name": "export_archive", "description": "Сохранить все данные мониторинга (историю замеров и трафик) в архивный файл рядом с config.json",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{}}}},
-	{"type": "function", "function": map[string]any{
-		"name": "import_archive", "description": "Загрузить данные из архивного .jsonl файла. Сначала вызывай с mode=check: если есть пересечение периодов — спроси пользователя «перезаписать совпавшие или пропустить их?», затем вызови ещё раз с выбранным mode",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{
-			"path": map[string]any{"type": "string", "description": "полный путь к архивному файлу"},
-			"mode": map[string]any{"type": "string", "enum": []string{"check", "overwrite", "skip"},
-				"description": "check — только проверить (по умолчанию); overwrite — перезаписать совпавшие; skip — пропустить совпавшие"}},
-			"required": []string{"path"}}}},
-	{"type": "function", "function": map[string]any{
-		"name": "ping_host", "description": "Пинговать хост прямо сейчас (ICMP, 4 пакета) и вернуть статистику отклика: сколько ответило, среднее/мин/макс",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{
-			"host": map[string]any{"type": "string", "description": "имя хоста или IP"}},
-			"required": []string{"host"}}}},
-	{"type": "function", "function": map[string]any{
-		"name": "watch_host", "description": "Запустить фоновое наблюдение за хостом: пинг каждые N минут, статус виден в блоке «Наблюдение» на дашборде. Наблюдение переживает перезапуск приложения. Остановить — инструмент unwatch_host",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{
-			"host":    map[string]any{"type": "string", "description": "имя хоста или IP"},
-			"minutes": map[string]any{"type": "integer", "description": "период пинга в минутах (по умолчанию 5)"}},
-			"required": []string{"host"}}}},
-	{"type": "function", "function": map[string]any{
-		"name": "unwatch_host", "description": "Остановить фоновое наблюдение за хостом",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{
-			"host": map[string]any{"type": "string"}},
-			"required": []string{"host"}}}},
-	{"type": "function", "function": map[string]any{
-		"name": "unwatch_all", "description": "Остановить сразу ВСЕ наблюдения за хостами (для «останови все наблюдения»)",
-		"parameters": map[string]any{"type": "object", "properties": map[string]any{}}}},
+// agentToolsFor — описания инструментов для llama-server (нативный tool
+// calling) на языке интерфейса: маленькая модель следует фразовой карте
+// промпта, поэтому описания должны быть на том же языке.
+func agentToolsFor(lang string) []map[string]any {
+	tr := func(ru, en string) string {
+		if lang == LangEn {
+			return en
+		}
+		return ru
+	}
+	return []map[string]any{
+		{"type": "function", "function": map[string]any{
+			"name":        "run_check",
+			"description": tr("Сделать замер скорости интернета прямо сейчас и вернуть результат", "Run an internet speed test right now and return the result"),
+			"parameters":  map[string]any{"type": "object", "properties": map[string]any{}}}},
+		{"type": "function", "function": map[string]any{
+			"name":        "set_interval",
+			"description": tr("Изменить период автопроверок в минутах (5–180)", "Change the auto-check interval in minutes (5–180)"),
+			"parameters": map[string]any{"type": "object", "properties": map[string]any{
+				"minutes": map[string]any{"type": "integer", "description": tr("минуты", "minutes")}},
+				"required": []string{"minutes"}}}},
+		{"type": "function", "function": map[string]any{
+			"name":        "set_download_mb",
+			"description": tr("Объём теста загрузки в МБ (5–200)", "Download test size in MB (5–200)"),
+			"parameters": map[string]any{"type": "object", "properties": map[string]any{
+				"mb": map[string]any{"type": "integer", "description": tr("МБ", "MB")}},
+				"required": []string{"mb"}}}},
+		{"type": "function", "function": map[string]any{
+			"name":        "set_upload_mb",
+			"description": tr("Объём теста отдачи в МБ (5–200)", "Upload test size in MB (5–200)"),
+			"parameters": map[string]any{"type": "object", "properties": map[string]any{
+				"mb": map[string]any{"type": "integer", "description": tr("МБ", "MB")}},
+				"required": []string{"mb"}}}},
+		{"type": "function", "function": map[string]any{
+			"name":        "set_limits",
+			"description": tr("Границы зон оценки: «плохо» ниже bad, «хорошо» выше good, Мбит/с", "Speed zone limits: “bad” below bad, “good” above good, Mbps"),
+			"parameters": map[string]any{"type": "object", "properties": map[string]any{
+				"bad": map[string]any{"type": "number"}, "good": map[string]any{"type": "number"}},
+				"required": []string{"bad", "good"}}}},
+		{"type": "function", "function": map[string]any{
+			"name":        "set_net_rate",
+			"description": tr("Частота обновления живого графика, мс: 1000, 2000, 5000 или 10000", "Live chart refresh rate in ms: 1000, 2000, 5000 or 10000"),
+			"parameters": map[string]any{"type": "object", "properties": map[string]any{
+				"ms": map[string]any{"type": "integer"}},
+				"required": []string{"ms"}}}},
+		{"type": "function", "function": map[string]any{
+			"name":        "export_archive",
+			"description": tr("Сохранить все данные мониторинга (историю замеров и трафик) в архивный файл рядом с config.json", "Save all monitoring data (check history and traffic) into an archive file next to config.json"),
+			"parameters":  map[string]any{"type": "object", "properties": map[string]any{}}}},
+		{"type": "function", "function": map[string]any{
+			"name":        "import_archive",
+			"description": tr("Загрузить данные из архивного .jsonl файла. Сначала вызывай с mode=check: если есть пересечение периодов — спроси пользователя «перезаписать совпавшие или пропустить их?», затем вызови ещё раз с выбранным mode", "Load data from an archive .jsonl file. First call with mode=check: if periods overlap — ask the user “overwrite the matching ones or skip them?”, then call again with the chosen mode"),
+			"parameters": map[string]any{"type": "object", "properties": map[string]any{
+				"path": map[string]any{"type": "string", "description": tr("полный путь к архивному файлу", "full path to the archive file")},
+				"mode": map[string]any{"type": "string", "enum": []string{"check", "overwrite", "skip"},
+					"description": tr("check — только проверить (по умолчанию); overwrite — перезаписать совпавшие; skip — пропустить совпавшие", "check — verify only (default); overwrite — replace the matching ones; skip — skip the matching ones")}},
+				"required": []string{"path"}}}},
+		{"type": "function", "function": map[string]any{
+			"name":        "ping_host",
+			"description": tr("Пинговать хост прямо сейчас (ICMP, 4 пакета) и вернуть статистику отклика: сколько ответило, среднее/мин/макс", "Ping a host right now (ICMP, 4 packets) and return reply statistics: how many replied, avg/min/max"),
+			"parameters": map[string]any{"type": "object", "properties": map[string]any{
+				"host": map[string]any{"type": "string", "description": tr("имя хоста или IP", "hostname or IP")}},
+				"required": []string{"host"}}}},
+		{"type": "function", "function": map[string]any{
+			"name":        "watch_host",
+			"description": tr("Запустить фоновое наблюдение за хостом: пинг каждые N минут, статус виден в блоке «Наблюдение» на дашборде. Наблюдение переживает перезапуск приложения. Остановить — инструмент unwatch_host", "Start a background watch of a host: a ping every N minutes, the status is shown in the “Watch” panel on the dashboard. The watch survives an app restart. Stop it with the unwatch_host tool"),
+			"parameters": map[string]any{"type": "object", "properties": map[string]any{
+				"host":    map[string]any{"type": "string", "description": tr("имя хоста или IP", "hostname or IP")},
+				"minutes": map[string]any{"type": "integer", "description": tr("период пинга в минутах (по умолчанию 5)", "ping interval in minutes (default 5)")}},
+				"required": []string{"host"}}}},
+		{"type": "function", "function": map[string]any{
+			"name":        "unwatch_host",
+			"description": tr("Остановить фоновое наблюдение за хостом", "Stop the background watch of a host"),
+			"parameters": map[string]any{"type": "object", "properties": map[string]any{
+				"host": map[string]any{"type": "string"}},
+				"required": []string{"host"}}}},
+		{"type": "function", "function": map[string]any{
+			"name":        "unwatch_all",
+			"description": tr("Остановить сразу ВСЕ наблюдения за хостами (для «останови все наблюдения»)", "Stop ALL host watches at once (for “stop all watches”)"),
+			"parameters":  map[string]any{"type": "object", "properties": map[string]any{}}}},
+	}
+}
+
+// agentSystemPrompt — системный промпт на языке интерфейса: роль, стиль
+// и фразовая карта инструментов (маленькая модель следует ей буквально,
+// поэтому язык промпта и язык пользователя должны совпадать).
+func agentSystemPrompt(lang string) string {
+	if lang == LangEn {
+		return "You are the built-in network monitoring AI agent of the SpeedTestTray app. " +
+			"Answer in English, briefly (2–6 sentences), friendly and to the point, no Markdown headings. " +
+			"The only source of facts is the numeric measurement digest given to you in a separate message. " +
+			"Inventing numbers, comparisons or conclusions not present in the digest is strictly forbidden; " +
+			"if data is missing — say so directly. Never write internal reasoning — " +
+			"only the final answer. Actions are performed ONLY with tools, phrase map: " +
+			"“speed test / check now” → run_check; “ping <host>” → ping_host; " +
+			"“watch / monitor / keep an eye on <host> [every N minutes]” → watch_host; " +
+			"“stop / cancel watching [<host> / all watches]” → unwatch_host or unwatch_all; " +
+			"“save the archive” → export_archive; “load archive <path>” → import_archive; " +
+			"“set the interval to N minutes” → set_interval; “test size” → set_download_mb / set_upload_mb; " +
+			"“bad/good limits” → set_limits; “chart refresh rate” → set_net_rate. " +
+			"For such requests call the tool and restate its result; " +
+			"without calling a tool never write the words “done”, “started”, “stopped”."
+	}
+	return "Ты — встроенный ИИ-агент мониторинга сети в приложении SpeedTestTray. " +
+		"Отвечай на русском, кратко (2–6 предложений), дружелюбно и по делу, без Markdown-заголовков. " +
+		"Единственный источник фактов — числовая сводка замеров, данная тебе отдельным сообщением. " +
+		"Строго запрещено придумывать числа, сравнения и выводы, которых нет в сводке; " +
+		"если данных не хватает — прямо скажи об этом. Никогда не пиши внутренние рассуждения — " +
+		"только готовый ответ. Действия выполняются ТОЛЬКО инструментами, карта фраз: " +
+		"«замер скорости / проверь сейчас» → run_check; «пингуй <хост>» → ping_host; " +
+		"«следи / наблюдай / поставь на контроль / поставь задачу за <хост> [каждые N минут]» → watch_host; " +
+		"«останови / отмени / перестань следить [за <хост> / все наблюдения]» → unwatch_host или unwatch_all; " +
+		"«сохрани архив» → export_archive; «загрузи архив <путь>» → import_archive; " +
+		"«поставь период N минут» → set_interval; «объём теста» → set_download_mb / set_upload_mb; " +
+		"«границы плохо/хорошо» → set_limits; «частота обновления графика» → set_net_rate. " +
+		"Для таких просьб вызывай инструмент и пересказывай его результат; " +
+		"без вызова инструмента слов «готово», «запущено», «остановлено» не пиши."
 }
 
 // Chat отправляет вопрос модели, вернув обновлённую историю диалога.
@@ -713,7 +771,7 @@ func (a *Agent) Chat(question string) ([]chatMsg, error) {
 	if a.status.Status != "ready" {
 		st := a.status.Status
 		a.mu.Unlock()
-		return a.Msgs(), fmt.Errorf("агент не готов (%s)", st)
+		return a.Msgs(), fmt.Errorf(T("ag_not_ready"), st)
 	}
 	baseURL := a.baseURL
 	a.mu.Unlock()
@@ -722,27 +780,14 @@ func (a *Agent) Chat(question string) ([]chatMsg, error) {
 	a.mu.Lock()
 	a.stages = nil
 	a.mu.Unlock()
-	a.setStage("читаю сводку замеров", "active", "")
+	a.setStage(T("st_read_digest"), "active", "")
 	digest := a.Digest()
-	a.setStage("читаю сводку замеров", "done", "")
+	a.setStage(T("st_read_digest"), "done", "")
 
 	wire := []agentToolMsg{
-		{"role": "system", "content": "Ты — встроенный ИИ-агент мониторинга сети в приложении SpeedTestTray. " +
-			"Отвечай на русском, кратко (2–6 предложений), дружелюбно и по делу, без Markdown-заголовков. " +
-			"Единственный источник фактов — числовая сводка замеров, данная тебе отдельным сообщением. " +
-			"Строго запрещено придумывать числа, сравнения и выводы, которых нет в сводке; " +
-			"если данных не хватает — прямо скажи об этом. Никогда не пиши внутренние рассуждения — " +
-			"только готовый ответ. Действия выполняются ТОЛЬКО инструментами, карта фраз: " +
-			"«замер скорости / проверь сейчас» → run_check; «пингуй <хост>» → ping_host; " +
-			"«следи / наблюдай / поставь на контроль / поставь задачу за <хост> [каждые N минут]» → watch_host; " +
-			"«останови / отмени / перестань следить [за <хост> / все наблюдения]» → unwatch_host или unwatch_all; " +
-			"«сохрани архив» → export_archive; «загрузи архив <путь>» → import_archive; " +
-			"«поставь период N минут» → set_interval; «объём теста» → set_download_mb / set_upload_mb; " +
-			"«границы плохо/хорошо» → set_limits; «частота обновления графика» → set_net_rate. " +
-			"Для таких просьб вызывай инструмент и пересказывай его результат; " +
-			"без вызова инструмента слов «готово», «запущено», «остановлено» не пиши."},
-		{"role": "user", "content": "Числовая сводка замеров (единственный источник фактов):\n" + digest},
-		{"role": "assistant", "content": "Принял сводку, работаю с этими данными."},
+		{"role": "system", "content": agentSystemPrompt(Lang())},
+		{"role": "user", "content": T("dg_seed_user") + "\n" + digest},
+		{"role": "assistant", "content": T("dg_seed_ack")},
 	}
 	a.mu.Lock()
 	tail := a.msgs
@@ -760,22 +805,22 @@ func (a *Agent) Chat(question string) ([]chatMsg, error) {
 	toolUsed := false
 
 	for iter := 0; iter < 6; iter++ {
-		step := "формулирую ответ"
+		step := T("st_answer")
 		if iter == 0 {
-			step = "думаю над ответом"
+			step = T("st_think")
 		}
 		a.setStage(step, "active", "")
 		msg, err := a.callLLM(baseURL, wire, "")
 		if err != nil {
 			// сервер умер, пока агент «был готов» — честно переводим в ошибку
-			if strings.Contains(err.Error(), "недоступен") {
-				a.setError("llama-server не отвечает — нажмите «Повторить»")
+			if strings.Contains(err.Error(), "недоступен") || strings.Contains(err.Error(), "unreachable") {
+				a.setError(T("ag_dead"))
 			}
 			return a.Msgs(), err
 		}
 		if len(msg.ToolCalls) == 0 {
 			if iter == 0 && !toolUsed && (actionIntent.MatchString(question) || actionWords.MatchString(msg.Content)) {
-				a.setStage("уточняю действие", "active", "")
+				a.setStage(T("st_clarify"), "active", "")
 				// форс-вызов на чистом контексте: история диалога тянет
 				// маленькую модель к «знакомому» run_check, поэтому в wire
 				// оставляем только систему, сводку и само сообщение
@@ -786,9 +831,7 @@ func (a *Agent) Chat(question string) ([]chatMsg, error) {
 				} else {
 					// даже форс не помог — честный отказ вместо выдуманного успеха
 					a.setStage(step, "done", "")
-					final = "Команда похожа на действие, но вызвать инструмент не получилось. " +
-						"Попробуйте переформулировать: «пингуй <хост>», «следи за <хост> каждые N минут», " +
-						"«останови наблюдение за <хост>», «останови все наблюдения»."
+					final = T("ag_refusal")
 					break
 				}
 			}
@@ -799,23 +842,23 @@ func (a *Agent) Chat(question string) ([]chatMsg, error) {
 			break
 		}
 		toolUsed = true
-		a.setStage(step, "done", "нужен инструмент")
+		a.setStage(step, "done", T("st_need_tool"))
 		// вернуть assistant-сообщение с tool_calls, затем по одному tool-ответу
 		wire = append(wire, agentToolMsg{"role": "assistant", "content": msg.Content, "tool_calls": msg.RawToolCalls})
 		for _, tc := range msg.ToolCalls {
 			toolName := toolTitle(tc.Function.Name)
-			a.setStage("инструмент: "+toolName, "active", "")
+			a.setStage(T("st_tool", toolName), "active", "")
 			obs := a.execAction(tc.Function.Name, parseArgs(tc.Function.Arguments))
-			a.setStage("инструмент: "+toolName, "done", obs)
+			a.setStage(T("st_tool", toolName), "done", obs)
 			wire = append(wire, agentToolMsg{
 				"role": "tool", "tool_call_id": tc.ID, "content": obs,
 			})
 		}
 	}
 	if strings.TrimSpace(final) == "" {
-		final = "Готово — действие выполнено."
+		final = T("ag_done_fallback")
 	}
-	a.setStage("готово", "done", "")
+	a.setStage(T("st_done"), "done", "")
 
 	a.mu.Lock()
 	a.msgs = append(a.msgs,
@@ -832,14 +875,15 @@ func (a *Agent) Chat(question string) ([]chatMsg, error) {
 }
 
 // actionIntent — императив в сообщении пользователя: главный признак того,
-// что нужен вызов инструмента ( ground truth — слова пользователя, а не
-// пересказ маленькой модели)
-var actionIntent = regexp.MustCompile(`(?i)^(давай\s+)?(пингуй|следи|наблюдай|останови|отмени|отменить|перестань|сделай|поставь|измени|смени|сохрани|загрузи|экспортируй|запусти)`)
+// что нужен вызов инструмента (ground truth — слова пользователя, а не
+// пересказ маленькой модели). Матчит русский и английский императив —
+// язык промпта может смениться, привычки пользователя — нет.
+var actionIntent = regexp.MustCompile(`(?i)^((давай\s+)?(пингуй|следи|наблюдай|останови|отмени|отменить|перестань|сделай|поставь|измени|смени|сохрани|загрузи|экспортируй|запусти)|((let'?s\s+)?(run|check|measure|ping|watch|monitor|stop|cancel|save|import|export|set|change|start)\b))`)
 
 // actionWords — словесные подтверждения действия в ответе модели; если
 // финальный ответ содержит их, а инструмент за запрос ни разу не вызван,
 // модель «рассказала» о действии словами — нужен повтор с required
-var actionWords = regexp.MustCompile(`(?i)(инструмент|запус|запущ|останов|отмен|выполн|измен|сохран|начат|закрыт|активир)`)
+var actionWords = regexp.MustCompile(`(?i)(инструмент|запус|запущ|останов|отмен|выполн|измен|сохран|начат|закрыт|активир|\btool\b|runn|\bstart|\bstop|\bcancel|\bdone|complet|\bsaved|\bimport|\bexport|chang)`)
 
 // parseArgs разбирает строку аргументов tool-вызова (JSON) в карту.
 func parseArgs(s string) map[string]any {
@@ -874,7 +918,7 @@ func sanitizeFinal(reply string) string {
 	for _, line := range strings.Split(reply, "\n") {
 		t := strings.TrimSpace(line)
 		if t == "" || strings.HasPrefix(t, "{") || strings.Contains(t, `"action"`) ||
-			strings.Contains(t, "НАБЛЮДЕНИЕ:") {
+			strings.Contains(t, "НАБЛЮДЕНИЕ:") || strings.Contains(t, "HOST WATCHES") {
 			continue
 		}
 		keep = append(keep, t)
@@ -904,7 +948,7 @@ func (a *Agent) execAction(name string, args map[string]any) string {
 	switch name {
 	case "run_check":
 		if act.RunCheck == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
 		// база: последний известный замер
 		a.mu.Lock()
@@ -923,8 +967,8 @@ func (a *Agent) execAction(name string, args map[string]any) string {
 		deadline := waitStart.Add(90 * time.Second)
 		for time.Now().Before(deadline) {
 			time.Sleep(2 * time.Second)
-			a.setStage("инструмент: замер скорости", "active",
-				fmt.Sprintf("жду замер… %d с", int(time.Since(waitStart).Seconds())))
+			a.setStage(T("st_tool", toolTitle("run_check")), "active",
+				fmt.Sprintf(T("obs_wait"), int(time.Since(waitStart).Seconds())))
 			a.mu.Lock()
 			var fresh *dashEntry
 			if a.history != nil {
@@ -939,83 +983,83 @@ func (a *Agent) execAction(name string, args map[string]any) string {
 			if fresh != nil {
 				a.invalidateDigest()
 				if fresh.Err != "" {
-					return fmt.Sprintf("Проверка завершилась ошибкой: %s", fresh.Err)
+					return fmt.Sprintf(T("obs_check_err"), fresh.Err)
 				}
-				return fmt.Sprintf("Проверка завершена в %s: ↓ %.1f ↑ %.1f Мбит/с, пинг %.0f мс, сервер %s.",
+				return fmt.Sprintf(T("obs_check_ok"),
 					fresh.TS.Format("15:04"), fresh.Down, fresh.Up, fresh.Ping, fresh.Server)
 			}
 		}
 		a.invalidateDigest()
-		return "Проверка запущена, но не завершилась за 90 секунд — результат появится в истории позже."
+		return T("obs_check_late")
 	case "set_interval":
 		if act.SetInterval == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
 		m := int(num(args["minutes"]))
 		if m < 5 || m > 180 {
-			return fmt.Sprintf("отказ: период автопроверок должен быть 5–180 минут (пришло %d)", m)
+			return fmt.Sprintf(T("obs_bad_interval"), m)
 		}
 		applied := act.SetInterval(m)
 		a.invalidateDigest()
-		return fmt.Sprintf("Период автопроверок изменён на %d минут.", applied)
+		return fmt.Sprintf(T("obs_interval_ok"), applied)
 	case "set_download_mb":
 		if act.SetDownloadMB == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
 		v := int(num(args["mb"]))
 		if v < 5 || v > 200 {
-			return fmt.Sprintf("отказ: объём теста загрузки должен быть 5–200 МБ (пришло %d)", v)
+			return fmt.Sprintf(T("obs_bad_dl"), v)
 		}
 		applied := act.SetDownloadMB(v)
 		a.invalidateDigest()
-		return fmt.Sprintf("Объём теста загрузки: %d МБ.", applied)
+		return fmt.Sprintf(T("obs_dl_ok"), applied)
 	case "set_upload_mb":
 		if act.SetUploadMB == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
 		v := int(num(args["mb"]))
 		if v < 5 || v > 200 {
-			return fmt.Sprintf("отказ: объём теста отдачи должен быть 5–200 МБ (пришло %d)", v)
+			return fmt.Sprintf(T("obs_bad_ul"), v)
 		}
 		applied := act.SetUploadMB(v)
 		a.invalidateDigest()
-		return fmt.Sprintf("Объём теста отдачи: %d МБ.", applied)
+		return fmt.Sprintf(T("obs_ul_ok"), applied)
 	case "set_limits":
 		if act.SetLimits == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
 		bad, good := num(args["bad"]), num(args["good"])
 		if bad <= 0 || good <= 0 || bad >= good {
-			return fmt.Sprintf("отказ: нужны корректные границы, bad < good (пришло bad=%.1f good=%.1f)", bad, good)
+			return fmt.Sprintf(T("obs_bad_limits"), bad, good)
 		}
 		ab, ag := act.SetLimits(bad, good)
 		a.invalidateDigest()
-		return fmt.Sprintf("Границы зон обновлены: «плохо» < %.0f Мбит/с, «хорошо» ≥ %.0f Мбит/с.", ab, ag)
+		return fmt.Sprintf(T("obs_limits_ok"), ab, ag)
 	case "set_net_rate":
 		if act.SetNetRate == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
 		ms := int(num(args["ms"]))
 		allowed := map[int]bool{1000: true, 2000: true, 5000: true, 10000: true}
 		if !allowed[ms] {
-			return "отказ: частота обновления — только 1000, 2000, 5000 или 10000 мс"
+			return T("obs_bad_rate")
 		}
 		applied := act.SetNetRate(ms)
 		a.invalidateDigest()
-		return fmt.Sprintf("Частота обновления живого графика: %d мс.", applied)
+		return fmt.Sprintf(T("obs_rate_ok"), applied)
 	case "export_archive":
 		if act.ExportArchive == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
-		a.setStage("инструмент: экспорт архива", "active", "собираю данные")
+		a.setStage(T("st_tool", toolTitle("export_archive")), "active", T("arch_collect"))
 		out, err := act.ExportArchive()
 		if err != nil {
-			return "отказ: " + err.Error()
+			return T("obs_refused") + err.Error()
 		}
 		return out
 	case "import_archive":
 		if act.ImportArchive == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
 		mode, _ := args["mode"].(string)
 		if strings.TrimSpace(mode) == "" {
@@ -1023,69 +1067,69 @@ func (a *Agent) execAction(name string, args map[string]any) string {
 		}
 		p, _ := args["path"].(string)
 		if strings.TrimSpace(p) == "" {
-			return "отказ: укажите полный путь к архивному файлу"
+			return T("obs_need_path")
 		}
-		a.setStage("инструмент: загрузка архива", "active", "режим "+mode)
+		a.setStage(T("st_tool", toolTitle("import_archive")), "active", fmt.Sprintf(T("obs_mode"), mode))
 		out, err := act.ImportArchive(p, mode)
 		if err != nil {
-			return "отказ: " + err.Error()
+			return T("obs_refused") + err.Error()
 		}
 		return out
 	case "ping_host":
 		if act.PingHost == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
 		host, _ := args["host"].(string)
 		if strings.TrimSpace(host) == "" {
-			return "отказ: укажите хост (имя или IP)"
+			return T("obs_need_host")
 		}
-		a.setStage("инструмент: пинг хоста", "active", host)
+		a.setStage(T("st_tool", toolTitle("ping_host")), "active", host)
 		out, err := act.PingHost(host)
 		if err != nil {
-			return "отказ: " + err.Error()
+			return T("obs_refused") + err.Error()
 		}
 		return out
 	case "watch_host":
 		if act.WatchHost == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
 		host, _ := args["host"].(string)
 		if strings.TrimSpace(host) == "" {
-			return "отказ: укажите хост (имя или IP)"
+			return T("obs_need_host")
 		}
 		minutes := int(num(args["minutes"]))
-		a.setStage("инструмент: наблюдение за хостом", "active", host)
+		a.setStage(T("st_tool", toolTitle("watch_host")), "active", host)
 		out, err := act.WatchHost(host, minutes)
 		if err != nil {
-			return "отказ: " + err.Error()
+			return T("obs_refused") + err.Error()
 		}
 		return out
 	case "unwatch_host":
 		if act.UnwatchHost == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
 		host, _ := args["host"].(string)
 		if strings.TrimSpace(host) == "" {
-			return "отказ: укажите хост"
+			return T("obs_need_host2")
 		}
-		a.setStage("инструмент: остановка наблюдения", "active", host)
+		a.setStage(T("st_tool", toolTitle("unwatch_host")), "active", host)
 		out, err := act.UnwatchHost(host)
 		if err != nil {
-			return "отказ: " + err.Error()
+			return T("obs_refused") + err.Error()
 		}
 		return out
 	case "unwatch_all":
 		if act.UnwatchAll == nil {
-			return "действие недоступно"
+			return T("obs_unavailable")
 		}
-		a.setStage("инструмент: остановка всех наблюдений", "active", "")
+		a.setStage(T("st_tool", toolTitle("unwatch_all")), "active", "")
 		out, err := act.UnwatchAll()
 		if err != nil {
-			return "отказ: " + err.Error()
+			return T("obs_refused") + err.Error()
 		}
 		return out
 	}
-	return "неизвестное действие: " + name
+	return T("obs_unknown", name)
 }
 
 // invalidateDigest сбрасывает кэш сводки (после действий/новых замеров).
@@ -1104,7 +1148,7 @@ func (a *Agent) callLLM(baseURL string, msgs []agentToolMsg, toolChoice string) 
 	}
 	payload := map[string]any{
 		"messages":    msgs,
-		"tools":       agentTools,
+		"tools":       agentToolsFor(Lang()),
 		"temperature": 0.3,
 		"max_tokens":  400,
 		"stream":      false,
@@ -1124,15 +1168,15 @@ func (a *Agent) callLLM(baseURL string, msgs []agentToolMsg, toolChoice string) 
 	client := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := client.Do(req)
 	if err != nil {
-		return llmMessage{}, fmt.Errorf("llama-server недоступен: %v", err)
+		return llmMessage{}, fmt.Errorf(T("ag_llm_unreachable"), err)
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode != http.StatusOK {
-		return llmMessage{}, fmt.Errorf("llama-server вернул %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return llmMessage{}, fmt.Errorf(T("ag_llm_code"), resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 	if err := json.Unmarshal(body, &out); err != nil || len(out.Choices) == 0 {
-		return llmMessage{}, fmt.Errorf("неожиданный ответ llama-server")
+		return llmMessage{}, fmt.Errorf("%s", T("ag_llm_unexpected"))
 	}
 	m := out.Choices[0].Message
 	// сырые tool_calls нужны для обратного рендера в wire (id/type/arguments)
@@ -1151,7 +1195,7 @@ func (a *Agent) callLLM(baseURL string, msgs []agentToolMsg, toolChoice string) 
 	// вырезаем блоки и одиночные теги
 	m.Content = stripThink(m.Content)
 	if m.Content == "" && len(m.ToolCalls) == 0 {
-		m.Content = "(пустой ответ модели)"
+		m.Content = T("ag_empty_reply")
 	}
 	return m, nil
 }
@@ -1170,29 +1214,29 @@ func stripThink(s string) string {
 func toolTitle(name string) string {
 	switch name {
 	case "run_check":
-		return "замер скорости"
+		return T("tt_run_check")
 	case "set_interval":
-		return "период автопроверок"
+		return T("tt_set_interval")
 	case "set_download_mb":
-		return "объём теста загрузки"
+		return T("tt_set_download")
 	case "set_upload_mb":
-		return "объём теста отдачи"
+		return T("tt_set_upload")
 	case "set_limits":
-		return "границы зон"
+		return T("tt_set_limits")
 	case "set_net_rate":
-		return "частота обновления"
+		return T("tt_set_net_rate")
 	case "export_archive":
-		return "экспорт архива"
+		return T("tt_export")
 	case "import_archive":
-		return "загрузка архива"
+		return T("tt_import")
 	case "ping_host":
-		return "пинг хоста"
+		return T("tt_ping")
 	case "watch_host":
-		return "наблюдение за хостом"
+		return T("tt_watch")
 	case "unwatch_host":
-		return "остановка наблюдения"
+		return T("tt_unwatch")
 	case "unwatch_all":
-		return "остановка всех наблюдений"
+		return T("tt_unwatch_all")
 	}
 	return name
 }
@@ -1223,10 +1267,9 @@ func (a *Agent) Digest() string {
 		if jobs := wprov(); len(jobs) > 0 {
 			parts := make([]string, len(jobs))
 			for i, j := range jobs {
-				parts[i] = fmt.Sprintf("%s (каждые %d мин)", j.Host, j.IntervalMin)
+				parts[i] = fmt.Sprintf(T("dg_watch_item"), j.Host, j.IntervalMin)
 			}
-			digest += "\nНаблюдения за хостами (остановить можно инструментом unwatch_host/unwatch_all): " +
-				strings.Join(parts, ", ")
+			digest += "\n" + T("dg_watch_intro") + strings.Join(parts, ", ")
 		}
 	}
 	a.mu.Lock()
@@ -1338,7 +1381,7 @@ func buildDigest(history []dashEntry, traffic TrafficStore, bad, good float64, m
 			losses = append(losses, e.Loss)
 			loc := e.Server
 			if loc == "" {
-				loc = "неизвестно"
+				loc = T("dg_unknown_loc")
 			}
 			locs[loc] = append(locs[loc], e.Down)
 		}
@@ -1367,32 +1410,31 @@ func buildDigest(history []dashEntry, traffic TrafficStore, bad, good float64, m
 	var ins []string
 
 	if nW == 0 {
-		b.WriteString("Измерений пока нет.")
-		ins = []string{"Пока нет измерений — нажмите «Проверить сейчас», чтобы собрать первые данные."}
-		return b.String(), ins
+		b.WriteString(T("dg_no_data"))
+		return b.String(), []string{T("dg_no_data_ins")}
 	}
 
 	// скорость
 	if len(downsD) > 0 {
-		fmt.Fprintf(&b, "За последние 24 ч: %d измерений, средняя ↓ %.1f Мбит/с (мин %.1f, макс %.1f), средняя ↑ %.1f, средний пинг %.0f мс.\n",
-			nD, avg(downsD), minOf(downsD), maxOf(downsD), avg(upsD), avg(pingsD))
-		ins = append(ins, fmt.Sprintf("За 24 ч: средняя ↓ %.1f Мбит/с (от %.1f до %.1f), проверок %d.",
+		fmt.Fprintln(&b, fmt.Sprintf(T("dg_day"),
+			nD, avg(downsD), minOf(downsD), maxOf(downsD), avg(upsD), avg(pingsD)))
+		ins = append(ins, fmt.Sprintf(T("dg_day_ins"),
 			avg(downsD), minOf(downsD), maxOf(downsD), nD))
 	}
 	if len(prev) > 0 && len(downsD) > 0 {
 		pa, ca := avg(prev), avg(downsD)
 		if pa > 0 {
 			d := (ca - pa) / pa * 100
-			wd := "без изменений"
+			wd := T("dg_unchanged")
 			switch {
 			case d > 10:
-				wd = fmt.Sprintf("на %.0f%% лучше", d)
+				wd = fmt.Sprintf(T("dg_better"), d)
 			case d < -10:
-				wd = fmt.Sprintf("на %.0f%% хуже", -d)
+				wd = fmt.Sprintf(T("dg_worse"), -d)
 			}
-			fmt.Fprintf(&b, "Тренд: средняя за сутки %.1f против %.1f Мбит/с сутками ранее (%s).\n", ca, pa, wd)
-			if wd != "без изменений" {
-				ins = append(ins, "Тренд: по сравнению с предыдущими сутками скорость "+wd+".")
+			fmt.Fprintln(&b, fmt.Sprintf(T("dg_trend"), ca, pa, wd))
+			if wd != T("dg_unchanged") {
+				ins = append(ins, fmt.Sprintf(T("dg_trend_ins"), wd))
 			}
 		}
 	}
@@ -1411,13 +1453,13 @@ func buildDigest(history []dashEntry, traffic TrafficStore, bad, good float64, m
 				goodn++
 			}
 		}
-		fmt.Fprintf(&b, "За 7 дней: %d успешных измерений (%.0f%% в зелёной зоне ≥%.0f, %d ниже плохой границы %.0f), ошибок %d, обрезанных тестов %d. Средний пинг %.0f мс, средние потери %.1f%%.\n",
-			len(downsW), 100*float64(goodn)/float64(len(downsW)), good, worst, bad, errW, truncW, avg(pingsW), avg(lossesW))
+		fmt.Fprintln(&b, fmt.Sprintf(T("dg_week"),
+			len(downsW), 100*float64(goodn)/float64(len(downsW)), good, worst, bad, errW, truncW, avg(pingsW), avg(lossesW)))
 		if worst > 0 {
-			ins = append(ins, fmt.Sprintf("Аномалии: %d измерений за неделю ниже «плохой» границы %.0f Мбит/с.", worst, bad))
+			ins = append(ins, fmt.Sprintf(T("dg_anomalies"), worst, bad))
 		}
 		if errW > 0 {
-			ins = append(ins, fmt.Sprintf("Ошибок проверок за неделю: %d.", errW))
+			ins = append(ins, fmt.Sprintf(T("dg_errors"), errW))
 		}
 	}
 
@@ -1433,15 +1475,15 @@ func buildDigest(history []dashEntry, traffic TrafficStore, bad, good float64, m
 			list = append(list, lc{k, avg(v), len(v)})
 		}
 		sort.Slice(list, func(i, j int) bool { return list[i].avg > list[j].avg })
-		fmt.Fprintf(&b, "Локации за 7 дней: ")
+		b.WriteString(T("dg_locs"))
 		for i, l := range list {
 			if i >= 4 {
 				break
 			}
-			fmt.Fprintf(&b, "%s — средняя %.1f Мбит/с (%d замеров); ", l.name, l.avg, l.n)
+			fmt.Fprintf(&b, T("dg_loc_item"), l.name, l.avg, l.n)
 		}
 		b.WriteString("\n")
-		ins = append(ins, fmt.Sprintf("Лучшая локация за неделю: %s — %.1f Мбит/с (%d замеров).",
+		ins = append(ins, fmt.Sprintf(T("dg_best_loc"),
 			list[0].name, list[0].avg, list[0].n))
 	}
 
@@ -1475,8 +1517,8 @@ func buildDigest(history []dashEntry, traffic TrafficStore, bad, good float64, m
 			first = false
 		}
 		if !first && hn[bh] != hn[wh] {
-			fmt.Fprintf(&b, "По часам за 7 дней: лучший %02d:00 — %.1f Мбит/с, худший %02d:00 — %.1f Мбит/с.\n", bh, bestv, wh, worstv)
-			ins = append(ins, fmt.Sprintf("Лучший час за неделю: %02d:00 (↓ %.1f Мбит/с), худший: %02d:00 (↓ %.1f).", bh, bestv, wh, worstv))
+			fmt.Fprintln(&b, fmt.Sprintf(T("dg_hours"), bh, bestv, wh, worstv))
+			ins = append(ins, fmt.Sprintf(T("dg_hours_ins"), bh, bestv, wh, worstv))
 		}
 	}
 
@@ -1490,15 +1532,15 @@ func buildDigest(history []dashEntry, traffic TrafficStore, bad, good float64, m
 	if v, ok := traffic.Months[mkey]; ok {
 		monDown, monUp = v[0], v[1]
 	}
-	fmt.Fprintf(&b, "Трафик: сегодня ↓ %s ↑ %s, за месяц ↓ %s ↑ %s.\n",
-		fmtBytes(dayDown), fmtBytes(dayUp), fmtBytes(monDown), fmtBytes(monUp))
-	ins = append(ins, fmt.Sprintf("Трафик: сегодня ↓ %s ↑ %s, за месяц ↓ %s ↑ %s.",
+	fmt.Fprintln(&b, fmt.Sprintf(T("dg_traffic"),
+		fmtBytes(dayDown), fmtBytes(dayUp), fmtBytes(monDown), fmtBytes(monUp)))
+	ins = append(ins, fmt.Sprintf(T("dg_traffic"),
 		fmtBytes(dayDown), fmtBytes(dayUp), fmtBytes(monDown), fmtBytes(monUp)))
 
 	// текущие настройки приложения
 	if m.Interval > 0 {
-		fmt.Fprintf(&b, "Настройки: автопроверка каждые %d мин; тест ↓%d/↑%d МБ; зоны: плохо < %.0f, хорошо ≥ %.0f Мбит/с; обновление графика %d мс.\n",
-			m.Interval, m.DownMB, m.UpMB, bad, good, m.RateMs)
+		fmt.Fprintln(&b, fmt.Sprintf(T("dg_settings"),
+			m.Interval, m.DownMB, m.UpMB, bad, good, m.RateMs))
 	}
 
 	// последняя проверка
@@ -1509,8 +1551,8 @@ func buildDigest(history []dashEntry, traffic TrafficStore, bad, good float64, m
 		}
 	}
 	if last != nil {
-		fmt.Fprintf(&b, "Последняя проверка: %s — ↓ %.1f ↑ %.1f Мбит/с, пинг %.0f мс (%s).\n",
-			last.TS.Format("15:04"), last.Down, last.Up, last.Ping, last.Server)
+		fmt.Fprintln(&b, fmt.Sprintf(T("dg_last"),
+			last.TS.Format("15:04"), last.Down, last.Up, last.Ping, last.Server))
 	}
 
 	return b.String(), ins

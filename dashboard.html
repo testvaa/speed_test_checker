@@ -459,7 +459,8 @@
   .chat-row input:focus{outline:none;border-color:var(--border2)}
   .chat-row input:disabled{opacity:.5}
 </style>
-<script>try{if(localStorage.getItem("stt_theme")==="light")document.documentElement.classList.add("light")}catch(e){}</script>
+<script>try{if(localStorage.getItem("stt_theme")==="light")document.documentElement.classList.add("light")}catch(e){}
+try{if(localStorage.getItem("stt_lang")==="en"){document.documentElement.lang="en";window.__LANG="en"}}catch(e){}</script>
 </head>
 <body>
 <div class="wrap">
@@ -470,21 +471,21 @@
     <div class="head">
       <div class="head-ico" id="hIco"><span class="dot"></span><span class="spin"></span></div>
       <div class="head-main">
-        <div class="head-title" id="hTitle">Мониторинг сети</div>
-        <div class="head-sub">SpeedTestTray · <b>Cloudflare</b> · каждые <span id="hInterval">10</span> мин</div>
+        <div class="head-title" id="hTitle" data-i18n="h_title">Мониторинг сети</div>
+        <div class="head-sub">SpeedTestTray · <b>Cloudflare</b> · <span data-i18n="every">каждые</span> <span id="hInterval">10</span> <span data-i18n="min">мин</span></div>
       </div>
       <div class="head-right">
-        <div class="speed-big"><span id="sNow">0.0</span><small>↓ Мбит/с</small></div>
-        <div class="speed-sub"><span class="up">↑ <span id="sUp">0.0</span></span> · сегодня ↓<span id="sDay">0 Б</span></div>
-        <div class="head-actions"><button class="btn" id="runBtn">▶ Проверить сейчас</button></div>
+        <div class="speed-big"><span id="sNow">0.0</span><small data-i18n="mbps_down">↓ Мбит/с</small></div>
+        <div class="speed-sub"><span class="up">↑ <span id="sUp">0.0</span></span> · <span data-i18n="today">сегодня</span> ↓<span id="sDay">0 Б</span></div>
+        <div class="head-actions"><button class="btn" id="runBtn" data-i18n="run_now">▶ Проверить сейчас</button></div>
       </div>
     </div>
   </div>
 
   <!-- Трафик: сразу под шапкой с текущей скоростью -->
   <div class="card traf">
-    <div>Сегодня: ↓ <b id="tDayD">—</b> · ↑ <b id="tDayU">—</b></div>
-    <div>За месяц: ↓ <b id="tMonD">—</b> · ↑ <b id="tMonU">—</b></div>
+    <div><span data-i18n="today_colon">Сегодня</span>: ↓ <b id="tDayD">—</b> · ↑ <b id="tDayU">—</b></div>
+    <div><span data-i18n="month_colon">За месяц</span>: ↓ <b id="tMonD">—</b> · ↑ <b id="tMonU">—</b></div>
   </div>
 
   <!-- Последняя проверка -->
@@ -493,49 +494,49 @@
   <!-- График -->
   <div class="card">
     <div class="chart-head">
-      <span class="chart-label">Скорость за сессию</span>
+      <span class="chart-label" data-i18n="session_speed">Скорость за сессию</span>
       <div class="probe" id="probe">
-        <div class="p-row"><span class="pen">✎</span><span id="probeTxt">проверка…</span></div>
+        <div class="p-row"><span class="pen">✎</span><span id="probeTxt" data-i18n="checking_ellipsis">проверка…</span></div>
         <div class="pbar"><i id="probeBar"></i></div>
       </div>
-      <span class="chart-peak">пик <i id="peak">0</i> Мбит/с</span>
+      <span class="chart-peak"><span data-i18n="peak">пик</span> <i id="peak">0</i> <span data-i18n="mbps">Мбит/с</span></span>
     </div>
     <div class="chart-box">
       <canvas id="chart"></canvas>
-      <div class="chart-empty" id="chartEmpty">Жду данных…</div>
+      <div class="chart-empty" id="chartEmpty" data-i18n="waiting_data">Жду данных…</div>
     </div>
     <div class="chart-foot">
       <span id="fPoints">точек 0</span>
       <span id="fWindow">окно 0 мин</span>
       <span id="fBad"></span>
-      <span class="net-rate">обновление
-        <select id="netRate" title="Как часто обновлять график">
-          <option value="1000">1 с</option>
-          <option value="2000">2 с</option>
-          <option value="5000">5 с</option>
-          <option value="10000">10 с</option>
+      <span class="net-rate"><span data-i18n="refresh">обновление</span>
+        <select id="netRate" data-i18n-tip="refresh_tip" title="Как часто обновлять график">
+          <option value="1000" data-i18n="s1">1 с</option>
+          <option value="2000" data-i18n="s2">2 с</option>
+          <option value="5000" data-i18n="s5">5 с</option>
+          <option value="10000" data-i18n="s10">10 с</option>
         </select>
       </span>
       <button class="foot-btn" id="procBtn" type="button"
-        title="Процессы и их сетевые соединения">кто потребляет интернет</button>
+        data-i18n-tip="proc_tip" title="Процессы и их сетевые соединения"><span data-i18n="who_uses">кто потребляет интернет</span></button>
     </div>
   </div>
 
   <!-- Кто потребляет интернет: процессы и их соединения -->
   <div class="card proc-card" id="procCard" style="display:none">
     <div class="proc-head">
-      <span class="proc-title">Кто потребляет интернет</span>
+      <span class="proc-title" data-i18n="who_uses">Кто потребляет интернет</span>
       <div class="proc-tabs">
-        <button class="ptab on" type="button" data-tab="procs">Процессы</button>
-        <button class="ptab" type="button" data-tab="conns">Соединения</button>
+        <button class="ptab on" type="button" data-tab="procs" data-i18n="tab_procs">Процессы</button>
+        <button class="ptab" type="button" data-tab="conns" data-i18n="tab_conns">Соединения</button>
       </div>
       <span class="proc-hint" id="procHint"></span>
-      <button class="foot-btn" id="procClose" type="button" title="Скрыть панель">✕</button>
+      <button class="foot-btn" id="procClose" type="button" data-i18n-tip="hide_panel" title="Скрыть панель">✕</button>
     </div>
     <div class="proc-body" id="procBody">
-      <div class="proc-empty">снимаю данные…</div>
+      <div class="proc-empty" data-i18n="proc_collecting">снимаю данные…</div>
     </div>
-    <div class="proc-note">активность ≈ — счётчики ввода-вывода процесса (диск + сеть);
+    <div class="proc-note" data-i18n="proc_note">активность ≈ — счётчики ввода-вывода процесса (диск + сеть);
       точный сетевой счётчик в Windows требует прав администратора.
       Имена хостов определяются в течение пары секунд, локальные адреса не разрешаются.</div>
   </div>
@@ -543,28 +544,28 @@
   <!-- Аналитика измерений: фильтры + три блока в одной карточке -->
   <div class="card an">
     <div class="an-head">
-      <span class="an-title">Аналитика измерений</span>
-      <span class="an-hint">фильтры применяются ко всем трём блокам ниже</span>
-      <button class="reset-btn" type="button" id="resetAll" title="Сбросить все фильтры">✕ сбросить всё</button>
+      <span class="an-title" data-i18n="analytics">Аналитика измерений</span>
+      <span class="an-hint" data-i18n="an_hint">фильтры применяются ко всем трём блокам ниже</span>
+      <button class="reset-btn" type="button" id="resetAll" data-i18n-tip="reset_all_tip" title="Сбросить все фильтры" data-i18n="reset_all">✕ сбросить всё</button>
     </div>
 
     <div class="filters">
-      <label>Локация <select id="fLoc"></select></label>
-      <label>Время суток
+      <label><span data-i18n="location">Локация</span> <select id="fLoc"></select></label>
+      <label><span data-i18n="time_of_day">Время суток</span>
         <select id="fTod">
-          <option value="all">любое</option>
-          <option value="0">00–06 · ночь</option>
-          <option value="1">06–12 · утро</option>
-          <option value="2">12–18 · день</option>
-          <option value="3">18–24 · вечер</option>
+          <option value="all" data-i18n="any">любое</option>
+          <option value="0" data-i18n="tod_night">00–06 · ночь</option>
+          <option value="1" data-i18n="tod_morning">06–12 · утро</option>
+          <option value="2" data-i18n="tod_day">12–18 · день</option>
+          <option value="3" data-i18n="tod_evening">18–24 · вечер</option>
         </select>
       </label>
-      <label>Период
+      <label><span data-i18n="period">Период</span>
         <select id="fPeriod">
-          <option value="all">всё время</option>
-          <option value="1">последние сутки</option>
-          <option value="7">7 дней</option>
-          <option value="30">30 дней</option>
+          <option value="all" data-i18n="all_time">всё время</option>
+          <option value="1" data-i18n="last_24h">последние сутки</option>
+          <option value="7" data-i18n="days7">7 дней</option>
+          <option value="30" data-i18n="days30">30 дней</option>
         </select>
       </label>
       <span class="f-count" id="fCount"></span>
@@ -572,27 +573,27 @@
 
     <div class="an-sec">
       <div class="an-sec-head">
-        <span class="an-sec-title">Рейтинг локаций</span>
-        <span class="an-sec-sub">куда подключаться: средняя ↓ по каждой локации</span>
-        <button class="reset-btn" type="button" data-reset="loc" title="Показать все локации">✕ сбросить локацию</button>
+        <span class="an-sec-title" data-i18n="loc_rating">Рейтинг локаций</span>
+        <span class="an-sec-sub" data-i18n="loc_rating_sub">куда подключаться: средняя ↓ по каждой локации</span>
+        <button class="reset-btn" type="button" data-reset="loc" data-i18n-tip="reset_loc_tip" title="Показать все локации" data-i18n="reset_loc">✕ сбросить локацию</button>
       </div>
       <div id="rating"></div>
     </div>
 
     <div class="an-sec">
       <div class="an-sec-head">
-        <span class="an-sec-title">Скорость по часам суток</span>
-        <span class="an-sec-sub" id="hoursSub">сегодня</span>
-        <button class="reset-btn" type="button" data-reset="tod" title="Показать все часы">✕ сбросить время</button>
+        <span class="an-sec-title" data-i18n="by_hours">Скорость по часам суток</span>
+        <span class="an-sec-sub" id="hoursSub" data-i18n="today">сегодня</span>
+        <button class="reset-btn" type="button" data-reset="tod" data-i18n-tip="reset_tod_tip" title="Показать все часы" data-i18n="reset_tod">✕ сбросить время</button>
         <div class="hours-nav">
-          <button class="foot-btn" type="button" id="hoursPrev" title="День назад">←</button>
-          <button class="foot-btn hours-date" type="button" id="hoursDate" title="Выбрать день">—</button>
-          <button class="foot-btn" type="button" id="hoursNext" title="День вперёд">→</button>
+          <button class="foot-btn" type="button" id="hoursPrev" data-i18n-tip="day_back" title="День назад">←</button>
+          <button class="foot-btn hours-date" type="button" id="hoursDate" data-i18n-tip="pick_day" title="Выбрать день">—</button>
+          <button class="foot-btn" type="button" id="hoursNext" data-i18n-tip="day_fwd" title="День вперёд">→</button>
           <div class="cal" id="hoursCal">
             <div class="cal-head">
-              <button class="foot-btn" type="button" id="calPrev" title="Месяц назад">‹</button>
+              <button class="foot-btn" type="button" id="calPrev" data-i18n-tip="month_back" title="Месяц назад">‹</button>
               <span class="cal-title" id="calTitle"></span>
-              <button class="foot-btn" type="button" id="calNext" title="Месяц вперёд">›</button>
+              <button class="foot-btn" type="button" id="calNext" data-i18n-tip="month_fwd" title="Месяц вперёд">›</button>
             </div>
             <div class="cal-grid" id="calGrid"></div>
           </div>
@@ -607,21 +608,21 @@
 
     <div class="an-sec">
       <div class="an-sec-head">
-        <span class="an-sec-title">История проверок</span>
-        <button class="foot-btn" type="button" id="archExportBtn" title="Сохранить историю замеров и трафик в архивный файл">⬇ архив</button>
-        <button class="foot-btn" type="button" id="archImportBtn" title="Загрузить данные из архивного файла">⬆ импорт</button>
-        <button class="reset-btn" type="button" id="clearHist" title="Удалить все сохранённые измерения">🗑 Очистить</button>
+        <span class="an-sec-title" data-i18n="check_history">История проверок</span>
+        <button class="foot-btn" type="button" id="archExportBtn" data-i18n-tip="arch_export_tip" title="Сохранить историю замеров и трафик в архивный файл" data-i18n="arch_export">⬇ архив</button>
+        <button class="foot-btn" type="button" id="archImportBtn" data-i18n-tip="arch_import_tip" title="Загрузить данные из архивного файла" data-i18n="arch_import">⬆ импорт</button>
+        <button class="reset-btn" type="button" id="clearHist" data-i18n-tip="clear_tip" title="Удалить все сохранённые измерения" data-i18n="clear">🗑 Очистить</button>
       </div>
       <input type="file" id="archFile" accept=".jsonl,.json" style="display:none">
       <div class="hist" id="hist"></div>
     </div>
   </div>
 
-  <div class="conn-lost" id="connLost">✗ нет связи с приложением — SpeedTestTray запущен?</div>
+  <div class="conn-lost" id="connLost" data-i18n="conn_lost">✗ нет связи с приложением — SpeedTestTray запущен?</div>
 
   <div class="modal-back" id="archOverlay" style="display:none">
     <div class="modal-card">
-      <div class="arch-title" id="archTitle">Архив данных</div>
+      <div class="arch-title" id="archTitle" data-i18n="arch_data">Архив данных</div>
       <div class="vprogress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
         <div class="vp-fill"><div class="vp-stripes"></div></div>
         <div class="vp-text"><b>0</b><small>%</small></div>
@@ -631,9 +632,9 @@
       <div class="arch-ask" id="archAsk" style="display:none">
         <div class="arch-ask-text" id="archAskText"></div>
         <div class="arch-ask-btns">
-          <button class="btn" id="archOverwrite" type="button">Перезаписать</button>
-          <button class="btn" id="archSkip" type="button">Пропустить пересечения</button>
-          <button class="foot-btn" id="archCancel" type="button">отмена</button>
+          <button class="btn" id="archOverwrite" type="button" data-i18n="overwrite">Перезаписать</button>
+          <button class="btn" id="archSkip" type="button" data-i18n="skip_matching">Пропустить пересечения</button>
+          <button class="foot-btn" id="archCancel" type="button" data-i18n="cancel_l">отмена</button>
         </div>
       </div>
     </div>
@@ -646,18 +647,19 @@
     <div class="card agent-card" id="agentCard">
       <div class="agent-head">
         <button class="orb-btn off" id="orbBtn" type="button"
-          title="ИИ-агент сети: нажмите, чтобы инициализировать">
+          data-i18n-tip="orb_tip" title="ИИ-агент сети: нажмите, чтобы инициализировать">
           <canvas id="orbCanvas"></canvas>
         </button>
         <div class="agent-main">
-          <div class="agent-title">ИИ-агент сети</div>
+          <div class="agent-title" data-i18n="agent_title">ИИ-агент сети</div>
           <div class="agent-status" id="agentStatus">не запущен — нажмите «Инициализировать»</div>
         </div>
-        <button class="theme-btn" id="themeBtn" type="button" title="Переключить тему">☀️</button>
+        <button class="theme-btn" id="langBtn" type="button" data-i18n-tip="lang_tip" title="Язык интерфейса / Interface language">EN</button>
+        <button class="theme-btn" id="themeBtn" type="button" data-i18n-tip="theme_tip" title="Переключить тему">☀️</button>
       </div>
       <div class="agent-btnrow">
-        <button class="btn" id="agentInitBtn" type="button">Инициализировать</button>
-        <button class="foot-btn" id="agentStopBtn" type="button" style="display:none">выключить</button>
+        <button class="btn" id="agentInitBtn" type="button" data-i18n="initialize">Инициализировать</button>
+        <button class="foot-btn" id="agentStopBtn" type="button" style="display:none" data-i18n="turn_off">выключить</button>
       </div>
       <div class="watch" id="watchBox" style="display:none"></div>
       <div class="agent-loading" id="agentLoading" style="display:none">
@@ -667,9 +669,9 @@
         </div>
         <div class="load-phase" id="agentPhase">запускаюсь…</div>
         <div class="load-steps" id="loadSteps">
-          <span data-ls="0"><i></i>сервер llama.cpp</span>
-          <span data-ls="1"><i></i>модель с HuggingFace</span>
-          <span data-ls="2"><i></i>запуск модели</span>
+          <span data-ls="0"><i></i><span data-i18n="ls_server">сервер llama.cpp</span></span>
+          <span data-ls="1"><i></i><span data-i18n="ls_model">модель с HuggingFace</span></span>
+          <span data-ls="2"><i></i><span data-i18n="ls_start">запуск модели</span></span>
         </div>
         <div class="agent-progress">
           <span class="ap-glyph" data-ap-glyph></span>
@@ -678,22 +680,18 @@
         </div>
       </div>
       <div class="agent-sec" id="agentInsightsSec" style="display:none">
-        <div class="agent-sec-title" id="agentInsightsTitle">Выводы</div>
+        <div class="agent-sec-title" id="agentInsightsTitle" data-i18n="insights">Выводы</div>
         <div class="agent-insights" id="agentInsights"></div>
       </div>
       <div class="agent-sec" id="agentChatSec" style="display:none">
-        <div class="agent-sec-title">Чат с агентом</div>
+        <div class="agent-sec-title" data-i18n="chat_title">Чат с агентом</div>
         <div class="agent-chat" id="agentChat">
-        <div class="chat-chips">
-          <button class="chip-q" type="button" data-q="Сделай замер скорости и скажи результат">сделать замер</button>
-          <button class="chip-q" type="button" data-q="Когда лучше качать большие файлы?">лучшее время</button>
-          <button class="chip-q" type="button" data-q="Какой трафик за месяц?">трафик</button>
-        </div>
+        <div class="chat-chips" id="chatChips"></div>
         <div class="chat-log" id="chatLog"></div>
         <div class="chat-row">
           <input id="chatInput" type="text" autocomplete="off"
-            placeholder="Спросите или попросите: «сделай замер»…">
-          <button class="btn" id="chatSend" type="button">Отправить</button>
+            data-i18n-ph="chat_ph" placeholder="Спросите или попросите: «сделай замер»…">
+          <button class="btn" id="chatSend" type="button" data-i18n="send">Отправить</button>
         </div>
       </div>
       </div><!-- /agentChatSec -->
@@ -704,13 +702,13 @@
 <!-- подтверждение очистки истории -->
 <div class="modal" id="confirmModal">
   <div class="modal-card">
-    <div class="m-title">Очистить историю измерений?</div>
-    <div class="m-text">Будут удалены все <b id="mCount">…</b> сохранённые измерения —
+    <div class="m-title" data-i18n="m_title">Очистить историю измерений?</div>
+    <div class="m-text"><span data-i18n="m_text1">Будут удалены все</span> <b id="mCount">…</b> <span data-i18n="m_text2">сохранённые измерения —
       вместе с рейтингом локаций и статистикой по часам суток.
-      Действие <b>нельзя отменить</b>.</div>
+      Действие</span> <b data-i18n="m_undo">нельзя отменить</b>.</div>
     <div class="m-actions">
-      <button class="btn" id="mCancel" type="button">Отмена</button>
-      <button class="btn danger" id="mOk" type="button">🗑 Очистить</button>
+      <button class="btn" id="mCancel" type="button" data-i18n="cancel">Отмена</button>
+      <button class="btn danger" id="mOk" type="button" data-i18n="clear">🗑 Очистить</button>
     </div>
   </div>
 </div>
@@ -722,17 +720,228 @@ const $ = id => document.getElementById(id);
 let st = null;          // последний /api/state
 let pollTimer = null;
 
+/* ── локализация: русский / английский ─────────────────────────────
+   LANG — источник правды с сервера (st.lang); localStorage stt_lang —
+   только мгновенная отрисовка до первого тика, как у темы. */
+let LANG = window.__LANG === "en" ? "en" : "ru";
+const I18N = {
+ru: {
+  doc_title:"SpeedTestTray · Дашборд", h_title:"Мониторинг сети", every:"каждые", min:"мин",
+  mbps_down:"↓ Мбит/с", mbps:"Мбит/с", today:"сегодня", today_colon:"Сегодня", month_colon:"За месяц",
+  run_now:"▶ Проверить сейчас", session_speed:"Скорость за сессию", checking_ellipsis:"проверка…",
+  peak:"пик", waiting_data:"Жду данных…", refresh:"обновление", refresh_tip:"Как часто обновлять график",
+  s1:"1 с", s2:"2 с", s5:"5 с", s10:"10 с",
+  proc_tip:"Процессы и их сетевые соединения", who_uses:"кто потребляет интернет",
+  tab_procs:"Процессы", tab_conns:"Соединения", hide_panel:"Скрыть панель",
+  proc_collecting:"снимаю данные…",
+  proc_note:"активность ≈ — счётчики ввода-вывода процесса (диск + сеть); точный сетевой счётчик в Windows требует прав администратора. Имена хостов определяются в течение пары секунд, локальные адреса не разрешаются.",
+  analytics:"Аналитика измерений", an_hint:"фильтры применяются ко всем трём блокам ниже",
+  reset_all:"✕ сбросить всё", reset_all_tip:"Сбросить все фильтры",
+  location:"Локация", time_of_day:"Время суток", any:"любое",
+  tod_night:"00–06 · ночь", tod_morning:"06–12 · утро", tod_day:"12–18 · день", tod_evening:"18–24 · вечер",
+  period:"Период", all_time:"всё время", last_24h:"последние сутки", days7:"7 дней", days30:"30 дней",
+  loc_rating:"Рейтинг локаций", loc_rating_sub:"куда подключаться: средняя ↓ по каждой локации",
+  reset_loc:"✕ сбросить локацию", reset_loc_tip:"Показать все локации",
+  by_hours:"Скорость по часам суток", reset_tod:"✕ сбросить время", reset_tod_tip:"Показать все часы",
+  day_back:"День назад", pick_day:"Выбрать день", day_fwd:"День вперёд", month_back:"Месяц назад", month_fwd:"Месяц вперёд",
+  check_history:"История проверок", arch_export:"⬇ архив", arch_export_tip:"Сохранить историю замеров и трафик в архивный файл",
+  arch_import:"⬆ импорт", arch_import_tip:"Загрузить данные из архивного файла",
+  clear:"🗑 Очистить", clear_tip:"Удалить все сохранённые измерения",
+  conn_lost:"✗ нет связи с приложением — SpeedTestTray запущен?",
+  arch_data:"Архив данных", overwrite:"Перезаписать", skip_matching:"Пропустить пересечения", cancel_l:"отмена",
+  agent_title:"ИИ-агент сети", orb_tip:"ИИ-агент сети: нажмите, чтобы инициализировать",
+  lang_tip:"Язык интерфейса / Interface language", theme_tip:"Переключить тему",
+  initialize:"Инициализировать", turn_off:"выключить", insights:"Выводы", chat_title:"Чат с агентом",
+  chat_ph:"Спросите или попросите: «сделай замер»…", send:"Отправить",
+  m_title:"Очистить историю измерений?", m_text1:"Будут удалены все",
+  m_text2:"сохранённые измерения — вместе с рейтингом локаций и статистикой по часам суток. Действие",
+  m_undo:"нельзя отменить", cancel:"Отмена",
+  select_all_opt:"все",
+  in_sample:(n,m)=>"в выборке: "+n+" из "+m,
+  rating_empty:"Нет успешных проверок в выборке.",
+  rating_tip:(r)=>"локация: "+r.loc+(r.colo?" ("+r.colo+")":"")+"\nпроверок: "+r.n+" · средняя ↓ "+r.avg.toFixed(1)+" · лучшая ↓ "+r.best.toFixed(1)+" Мбит/с\nсредний пинг: "+Math.round(r.aping)+" мс"+(r.nets.size?"\nсети: "+[...r.nets].join(", "):"")+"\nклик — показать в истории только эту локацию",
+  max:"макс", ms:"мс", hours_no_data:"нет данных",
+  hour_tip_ok:(h,v,n)=>h+":00 · ↓ "+v+" Мбит/с · проверок: "+n, hour_tip_no:h=>h+":00 · нет данных",
+  best_hour:"лучший час", worst:"худший", avg_down:"средняя ↓", today_w:"сегодня", yesterday:"вчера",
+  no_data_day:d=>"нет данных за "+d, cal_has:"есть замеры",
+  watch_title:"Наблюдение за хостами", watch_since:s=>"следим с "+s,
+  watch_streak:n=>"подряд без ответа: "+n, watch_no_reply:"нет ответа", watch_every:n=>"каждые "+n+" мин",
+  checking_head:(p,c)=>"Идёт проверка · "+p+(c?" "+c:""), btn_checking:"⏳ Идёт проверка…",
+  probe_check:(p,c)=>"Проверка · "+p+(c?" "+c:""),
+  chip_fail:(t,e)=>t+" — проверка не удалась: "+e, chip_last:t=>"последняя проверка "+t,
+  chip_ping:p=>"пинг "+p+" мс", chip_jitter:j=>"джиттер "+j+" мс", chip_loss:l=>"потери "+l+"%",
+  conn_error:"ошибка соединения",
+  hist_empty_t:"Измерений пока нет", hist_empty_s:"первая проверка займёт ~10–15 секунд",
+  hist_empty_btn:"▶ Сделать измерение", hist_no_match:"По выбранным фильтрам ничего не найдено.",
+  hist_loc_tip:(loc,colo,net)=>"сервер: "+loc+(colo?" ("+colo+")":"")+(net?" · сеть: "+net:""),
+  trunc_note:" (тест обрезан)", sec:"с",
+  show_more:(n,rest)=>"показать ещё "+n+" из "+rest, show_more_tip:n=>"Раскрыть следующие "+n, collapse:"свернуть",
+  points:n=>"точек "+n, window_min:n=>"окно "+n+" мин", red_below:v=>"красный ниже "+v+" Мбит/с",
+  proc_refresh:s=>"обновление "+s+" с", proc_no_conns:"активных соединений нет", conns_short:"соед.",
+  ag_off:"не запущен — нажмите «Инициализировать»", ag_starting:"запускаюсь", ag_ready:"на связи",
+  ag_model:" · модель ", ag_local:" · всё локально", ag_error:"ошибка", ag_retry:"Повторить",
+  ag_can_do:"Что он умеет", ag_hint:"После инициализации пишите в чате, например:",
+  ag_examples:["«сделай замер и объясни результат»","«какая локация сейчас быстрее?»","«когда лучше качать большие файлы?»","«поставь автопроверку каждые 30 минут»","«следи за router.local каждые 5 минут»"],
+  greeting:"Привет! Чем могу помочь?", processing:"обрабатываю запрос", no_link:"⚠ нет связи с приложением",
+  arch_export_title:"Экспорт архива", arch_import_title:"Загрузка архива",
+  error_prefix:"Ошибка: ", file_saved:n=>"Файл сохранён: "+n, checking_file:"проверяю файл…",
+  overlap_found:"Найдено пересечение с существующей историей",
+  overlap_ask:(r)=>"Период "+r.from+" – "+r.to+" уже есть в истории: совпадает "+r.overlapCount+" из "+r.checks+" замеров."+(r.hasTraffic?" В архиве также есть данные трафика.":"")+" Перезаписать совпавшие замеры или пропустить их (загрузить только новые)?",
+  loading:"загружаю…", done:"Готово", preparing:"готовлюсь…",
+},
+en: {
+  doc_title:"SpeedTestTray · Dashboard", h_title:"Network monitoring", every:"every", min:"min",
+  mbps_down:"↓ Mbps", mbps:"Mbps", today:"today", today_colon:"Today", month_colon:"This month",
+  run_now:"▶ Check now", session_speed:"Speed this session", checking_ellipsis:"checking…",
+  peak:"peak", waiting_data:"Waiting for data…", refresh:"refresh", refresh_tip:"How often to refresh the chart",
+  s1:"1 s", s2:"2 s", s5:"5 s", s10:"10 s",
+  proc_tip:"Processes and their network connections", who_uses:"who is using the network",
+  tab_procs:"Processes", tab_conns:"Connections", hide_panel:"Hide the panel",
+  proc_collecting:"collecting data…",
+  proc_note:"activity ≈ — process I/O counters (disk + network); an exact network counter on Windows requires administrator rights. Host names resolve within a couple of seconds; local addresses are not resolved.",
+  analytics:"Measurement analytics", an_hint:"filters apply to all three sections below",
+  reset_all:"✕ reset all", reset_all_tip:"Reset all filters",
+  location:"Location", time_of_day:"Time of day", any:"any",
+  tod_night:"00–06 · night", tod_morning:"06–12 · morning", tod_day:"12–18 · day", tod_evening:"18–24 · evening",
+  period:"Period", all_time:"all time", last_24h:"last 24 hours", days7:"7 days", days30:"30 days",
+  loc_rating:"Location ranking", loc_rating_sub:"where to connect: avg ↓ per location",
+  reset_loc:"✕ reset location", reset_loc_tip:"Show all locations",
+  by_hours:"Speed by time of day", reset_tod:"✕ reset time", reset_tod_tip:"Show all hours",
+  day_back:"Previous day", pick_day:"Pick a day", day_fwd:"Next day", month_back:"Previous month", month_fwd:"Next month",
+  check_history:"Check history", arch_export:"⬇ archive", arch_export_tip:"Save check history and traffic to an archive file",
+  arch_import:"⬆ import", arch_import_tip:"Load data from an archive file",
+  clear:"🗑 Clear", clear_tip:"Delete all saved measurements",
+  conn_lost:"✗ no connection to the app — is SpeedTestTray running?",
+  arch_data:"Data archive", overwrite:"Overwrite", skip_matching:"Skip matching", cancel_l:"cancel",
+  agent_title:"Network AI agent", orb_tip:"Network AI agent: click to initialize",
+  lang_tip:"Язык интерфейса / Interface language", theme_tip:"Toggle theme",
+  initialize:"Initialize", turn_off:"turn off", insights:"Insights", chat_title:"Chat with the agent",
+  chat_ph:"Ask or request: “run a speed test”…", send:"Send",
+  m_title:"Clear measurement history?", m_text1:"All",
+  m_text2:"saved measurements will be deleted — along with the location ranking and by-hour statistics. This action",
+  m_undo:"cannot be undone", cancel:"Cancel",
+  select_all_opt:"all",
+  in_sample:(n,m)=>"in selection: "+n+" of "+m,
+  rating_empty:"No successful checks in this selection.",
+  rating_tip:(r)=>"location: "+r.loc+(r.colo?" ("+r.colo+")":"")+"\nchecks: "+r.n+" · avg ↓ "+r.avg.toFixed(1)+" · best ↓ "+r.best.toFixed(1)+" Mbps\navg ping: "+Math.round(r.aping)+" ms"+(r.nets.size?"\nnetworks: "+[...r.nets].join(", "):"")+"\nclick — show only this location in history",
+  max:"max", ms:"ms", hours_no_data:"no data",
+  hour_tip_ok:(h,v,n)=>h+":00 · ↓ "+v+" Mbps · checks: "+n, hour_tip_no:h=>h+":00 · no data",
+  best_hour:"best hour", worst:"worst", avg_down:"avg ↓", today_w:"today", yesterday:"yesterday",
+  no_data_day:d=>"no data for "+d, cal_has:"has measurements",
+  watch_title:"Host watch", watch_since:s=>"watching since "+s,
+  watch_streak:n=>"no reply "+n+"× in a row", watch_no_reply:"no reply", watch_every:n=>"every "+n+" min",
+  checking_head:(p,c)=>"Checking · "+p+(c?" "+c:""), btn_checking:"⏳ Checking…",
+  probe_check:(p,c)=>"Check · "+p+(c?" "+c:""),
+  chip_fail:(t,e)=>t+" — check failed: "+e, chip_last:t=>"last check "+t,
+  chip_ping:p=>"ping "+p+" ms", chip_jitter:j=>"jitter "+j+" ms", chip_loss:l=>"loss "+l+"%",
+  conn_error:"connection error",
+  hist_empty_t:"No measurements yet", hist_empty_s:"the first check takes ~10–15 seconds",
+  hist_empty_btn:"▶ Run a check", hist_no_match:"Nothing found for the selected filters.",
+  hist_loc_tip:(loc,colo,net)=>"server: "+loc+(colo?" ("+colo+")":"")+(net?" · network: "+net:""),
+  trunc_note:" (test truncated)", sec:"s",
+  show_more:(n,rest)=>"show "+n+" more of "+rest, show_more_tip:n=>"Show the next "+n, collapse:"collapse",
+  points:n=>"points "+n, window_min:n=>"window "+n+" min", red_below:v=>"red below "+v+" Mbps",
+  proc_refresh:s=>"refresh "+s+" s", proc_no_conns:"no active connections", conns_short:"conn.",
+  ag_off:"not running — press Initialize", ag_starting:"starting", ag_ready:"connected",
+  ag_model:" · model ", ag_local:" · all local", ag_error:"error", ag_retry:"Retry",
+  ag_can_do:"What it can do", ag_hint:"After initialization, type in the chat, for example:",
+  ag_examples:["“run a speed test and explain the result”","“which location is faster right now?”","“when is the best time to download large files?”","“set the auto-check to every 30 minutes”","“watch router.local every 5 minutes”"],
+  greeting:"Hi! How can I help?", processing:"processing the request", no_link:"⚠ no connection to the app",
+  arch_export_title:"Archive export", arch_import_title:"Archive import",
+  error_prefix:"Error: ", file_saved:n=>"File saved: "+n, checking_file:"checking the file…",
+  overlap_found:"Found an overlap with the existing history",
+  overlap_ask:(r)=>"The period "+r.from+" – "+r.to+" already exists in the history: "+r.overlapCount+" of "+r.checks+" checks match."+(r.hasTraffic?" The archive also contains traffic data.":"")+" Overwrite the matching checks or skip them (load only the new ones)?",
+  loading:"loading…", done:"Done", preparing:"preparing…",
+}};
+// t(key, ...args): строки и функции-шаблоны текущего языка
+const t = (key, ...args) => {
+  const v = (I18N[LANG] && I18N[LANG][key] !== undefined) ? I18N[LANG][key] : I18N.ru[key];
+  if (v === undefined) return key;
+  return typeof v === "function" ? v(...args) : v;
+};
+// пер-языковые наборы: единицы, месяцы, дни, фазы, шаги архива, чипы чата
+const L10N = {
+  ru: {
+    bytes:[" ТБ"," ГБ"," МБ"," КБ"," Б"], bps:["МБ/с","КБ/с","Б/с"], el:[" м "," с "],
+    mon:["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"],
+    calMon:["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"],
+    wd:["Пн","Вт","Ср","Чт","Пт","Сб","Вс"],
+    phase:{meta:"соединение",ping:"пинг",download:"загрузка",upload:"отдача",loss:"потери"},
+    archSteps:{export:["сбор данных","запись файла","готово"], import:["чтение и проверка","запись строк","сохранение"]},
+    chips:[["Сделай замер скорости и скажи результат","сделать замер"],
+           ["Когда лучше качать большие файлы?","лучшее время"],
+           ["Какой трафик за месяц?","трафик"]],
+  },
+  en: {
+    bytes:[" TB"," GB"," MB"," KB"," B"], bps:["MB/s","KB/s","B/s"], el:[" m "," s "],
+    mon:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+    calMon:["January","February","March","April","May","June","July","August","September","October","November","December"],
+    wd:["Mo","Tu","We","Th","Fr","Sa","Su"],
+    phase:{meta:"connecting",ping:"ping",download:"download",upload:"upload",loss:"loss"},
+    archSteps:{export:["collecting data","writing file","done"], import:["reading and verifying","writing lines","saving"]},
+    chips:[["Run a speed test and tell me the result","run a test"],
+           ["When is the best time to download large files?","best time"],
+           ["What is my monthly traffic?","traffic"]],
+  },
+};
+const l10n = () => L10N[LANG] || L10N.ru;
+
+// applyStatic расставляет переводы по data-i18n / -tip / -ph атрибутам
+function applyStatic(){
+  document.documentElement.lang = LANG;
+  document.title = t("doc_title");
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-tip]").forEach(el => { el.title = t(el.dataset.i18nTip); });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  $("fPoints").textContent = t("points", st && st.series ? st.series.length : 0);
+  $("fWindow").textContent = t("window_min", 0);
+  renderChips();
+  $("langBtn").textContent = LANG === "ru" ? "EN" : "RU";
+}
+// renderChips — быстрые вопросы (и текст, и сам запрос — на языке агента)
+function renderChips(){
+  $("chatChips").innerHTML = l10n().chips.map(([q, label]) =>
+    '<button class="chip-q" type="button" data-q="'+esc(q)+'">'+esc(label)+'</button>').join("");
+  document.querySelectorAll(".chip-q").forEach(b =>
+    b.addEventListener("click", () => {
+      $("chatInput").value = b.dataset.q;
+      $("chatInput").focus();
+    }));
+}
+// setLang переключает интерфейс: статика + перерисовка динамических блоков
+function setLang(lang){
+  if (lang !== "en" && lang !== "ru") lang = "ru";
+  if (lang === LANG) return;
+  LANG = lang;
+  try{ localStorage.setItem("stt_lang", lang); }catch(e){}
+  applyStatic();
+  dotPat = null; // подписи осей перерисуются на новом языке
+  if (st){ renderHead(); renderDyn(); drawChart(); renderWatch(st.watch); }
+  if (procOpen) renderProc();
+  if ($("hoursCal").classList.contains("open")) buildCal(); else syncHoursUI();
+  loadAgent();
+}
+$("langBtn").addEventListener("click", async () => {
+  const next = LANG === "ru" ? "en" : "ru";
+  $("langBtn").disabled = true;
+  try{ await fetch("/api/lang", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({lang: next})}); }catch(e){}
+  $("langBtn").disabled = false;
+  setLang(next);
+});
+
 const fmtBytes = b => {
-  if (b >= 2**40) return (b/2**40).toFixed(2)+" ТБ";
-  if (b >= 2**30) return (b/2**30).toFixed(2)+" ГБ";
-  if (b >= 2**20) return (b/2**20).toFixed(1)+" МБ";
-  if (b >= 2**10) return (b/2**10).toFixed(1)+" КБ";
-  return b+" Б";
+  const u = l10n().bytes;
+  if (b >= 2**40) return (b/2**40).toFixed(2)+u[0];
+  if (b >= 2**30) return (b/2**30).toFixed(2)+u[1];
+  if (b >= 2**20) return (b/2**20).toFixed(1)+u[2];
+  if (b >= 2**10) return (b/2**10).toFixed(1)+u[3];
+  return b+u[4];
 };
 const hhmm = t => { const d=new Date(t); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
 const hhmmss = t => { const d=new Date(t); return hhmm(t)+":"+String(d.getSeconds()).padStart(2,"0"); };
-const dmy  = t => { const d=new Date(t); return d.getDate()+" "+["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"][d.getMonth()]; };
-const phaseRU = p => ({meta:"соединение",ping:"пинг",download:"загрузка",upload:"отдача",loss:"потери"}[p]||p);
+const dmy  = t => { const d=new Date(t); return d.getDate()+" "+l10n().mon[d.getMonth()]; };
+const phaseLabel = p => (l10n().phase[p] || p);
 const zoneOf = v => v >= st.goodMbps ? "ok" : (v >= st.badMbps ? "warn" : "bad");
 const zoneColor = z => ({ok:"var(--ok)",warn:"var(--warn)",bad:"var(--bad)"})[z];
 // цвет из CSS-переменной (тема) с фолбэком — для canvas, где var() не работает
@@ -766,7 +975,7 @@ function renderFilters(){
     lastHistLen = h.length;
     const counts = new Map();
     for (const e of h) counts.set(locOf(e), (counts.get(locOf(e)) || 0) + 1);
-    $("fLoc").innerHTML = '<option value="all">все</option>' +
+    $("fLoc").innerHTML = '<option value="all">'+esc(t("select_all_opt"))+'</option>' +
       [...counts.entries()].sort((a,b) => b[1]-a[1])
         .map(([k,n]) => '<option value="'+esc(k)+'"'+(k===flt.loc?" selected":"")+'>'+esc(k)+' ('+n+')</option>')
         .join("");
@@ -776,7 +985,7 @@ function renderFilters(){
   }
   $("fTod").value = flt.tod;
   $("fPeriod").value = flt.period;
-  $("fCount").textContent = "в выборке: " + filteredHistory().length + " из " + h.length;
+  $("fCount").textContent = t("in_sample", filteredHistory().length, h.length);
   // кнопки независимы: каждая видима только при «своём» активном фильтре
   const active = flt.loc !== "all" || flt.tod !== "all" || flt.period !== "all";
   const bAll = $("resetAll");
@@ -793,7 +1002,7 @@ function renderRating(){
   const box = $("rating");
   const rows = filteredHistory().filter(e => !e.err);
   if (!rows.length){
-    box.innerHTML = '<div class="empty">Нет успешных проверок в выборке.</div>';
+    box.innerHTML = '<div class="empty">'+esc(t("rating_empty"))+'</div>';
     return;
   }
   const by = new Map();
@@ -811,17 +1020,12 @@ function renderRating(){
   let html = "";
   for (const r of arr){
     const z = zoneOf(r.avg);
-    const tip = "локация: "+r.loc+(r.colo?" ("+r.colo+")":"")+"\n"+
-      "проверок: "+r.n+" · средняя ↓ "+r.avg.toFixed(1)+" · лучшая ↓ "+r.best.toFixed(1)+" Мбит/с\n"+
-      "средний пинг: "+Math.round(r.aping)+" мс"+
-      (r.nets.size ? "\nсети: "+[...r.nets].join(", ") : "")+
-      "\nклик — показать в истории только эту локацию";
-    html += '<div class="rt-row'+(r.loc===flt.loc?" active":"")+'" data-loc="'+esc(r.loc)+'" title="'+esc(tip)+'">'+
+    html += '<div class="rt-row'+(r.loc===flt.loc?" active":"")+'" data-loc="'+esc(r.loc)+'" title="'+esc(t("rating_tip", r))+'">'+
       '<span class="rt-name">'+esc(r.loc)+(r.colo?'<span class="colo">'+esc(r.colo)+'</span>':"")+'</span>'+
       '<span class="rt-n">×'+r.n+'</span>'+
       '<span class="rt-avg '+z+'">↓ '+r.avg.toFixed(1)+'</span>'+
-      '<span class="rt-best">макс '+r.best.toFixed(1)+'</span>'+
-      '<span class="rt-ping">'+Math.round(r.aping)+' мс</span></div>';
+      '<span class="rt-best">'+esc(t("max"))+' '+r.best.toFixed(1)+'</span>'+
+      '<span class="rt-ping">'+Math.round(r.aping)+' '+esc(t("ms"))+'</span></div>';
   }
   box.innerHTML = html;
   box.querySelectorAll(".rt-row").forEach(el =>
@@ -859,7 +1063,8 @@ function renderHours(){
   const stats = $("clockStats");
   if (!filled.length){
     const day = dayFromOff();
-    stats.innerHTML = '<span>нет данных за '+(hoursOff===0 ? "сегодня" : hoursOff===-1 ? "вчера" : dmy(day.getTime()))+'</span>';
+    stats.innerHTML = '<span>'+esc(t("no_data_day",
+      hoursOff===0 ? t("today_w") : hoursOff===-1 ? t("yesterday") : dmy(day.getTime())))+'</span>';
     return;
   }
   const best = filled.reduce((m,x) => x.a > m.a ? x : m);
@@ -867,9 +1072,9 @@ function renderHours(){
   const mid = filled.reduce((s,x) => s + x.a, 0) / filled.length;
   const hh2 = i => String(i).padStart(2,"0") + ":00";
   stats.innerHTML =
-    '<span>лучший час <b class="ok">'+hh2(best.i)+'</b> · ↓ <b class="ok">'+best.a.toFixed(1)+'</b></span>'+
-    '<span>худший <b>'+hh2(worst.i)+'</b> · ↓ <b>'+worst.a.toFixed(1)+'</b></span>'+
-    '<span>средняя ↓ <b>'+mid.toFixed(1)+'</b> Мбит/с</span>';
+    '<span>'+esc(t("best_hour"))+' <b class="ok">'+hh2(best.i)+'</b> · ↓ <b class="ok">'+best.a.toFixed(1)+'</b></span>'+
+    '<span>'+esc(t("worst"))+' <b>'+hh2(worst.i)+'</b> · ↓ <b>'+worst.a.toFixed(1)+'</b></span>'+
+    '<span>'+esc(t("avg_down"))+' <b>'+mid.toFixed(1)+'</b> '+esc(t("mbps"))+'</span>';
 }
 
 function drawHours(){
@@ -964,7 +1169,7 @@ function drawHours(){
     ctx.fillStyle = tc("--c-label", "#8a8a94");
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.font = "700 20px " + mono;
-    ctx.fillText("нет данных", padL+iw/2, padT+ih/2);
+    ctx.fillText(t("hours_no_data"), padL+iw/2, padT+ih/2);
     ctx.restore();
   }
 
@@ -981,9 +1186,10 @@ $("hoursChart").addEventListener("mousemove", e => {
     tip.style.display = "none"; return;
   }
   const h = Math.max(0, Math.min(23, Math.floor((x-hourLayout.padL)/hourLayout.iw*24)));
+  const hh = String(h).padStart(2,"0");
   tip.textContent = hoursCnt[h]
-    ? String(h).padStart(2,"0")+":00 · ↓ "+hoursAvg[h].toFixed(1)+" Мбит/с · проверок: "+hoursCnt[h]
-    : String(h).padStart(2,"0")+":00 · нет данных";
+    ? t("hour_tip_ok", hh, hoursAvg[h].toFixed(1), hoursCnt[h])
+    : t("hour_tip_no", hh);
   tip.style.display = "block";
   tip.style.left = Math.max(4, Math.min(x + 12, rect.width - 180)) + "px";
   tip.style.top = Math.max(4, y - 34) + "px";
@@ -997,7 +1203,7 @@ function syncHoursUI(){
   $("hoursDate").textContent = dmy(day.getTime()) +
     (day.getFullYear() !== new Date().getFullYear() ? " " + day.getFullYear() : "");
   $("hoursNext").disabled = hoursOff >= 0;
-  $("hoursSub").textContent = hoursOff === 0 ? "сегодня" : hoursOff === -1 ? "вчера" : dmy(day.getTime());
+  $("hoursSub").textContent = hoursOff === 0 ? t("today_w") : hoursOff === -1 ? t("yesterday") : dmy(day.getTime());
   renderHours();
 }
 $("hoursPrev").addEventListener("click", () => { hoursOff--; syncHoursUI(); });
@@ -1007,8 +1213,6 @@ $("hoursDate").addEventListener("click", () => {
 });
 
 /* календарь: дни с замерами отмечены точкой (из истории, дата — локальная) */
-const CAL_MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь",
-  "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 let calY = 0, calM = 0;
 function calOpen(){
   const d = dayFromOff();
@@ -1030,8 +1234,8 @@ function buildCal(){
     const last = cells[cells.length-1].d;
     cells.push({d: new Date(last.getTime() + 86400000), out: true});
   }
-  $("calTitle").textContent = CAL_MONTHS[calM] + " " + calY;
-  let html = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map(w => '<span class="wd">'+w+'</span>').join("");
+  $("calTitle").textContent = l10n().calMon[calM] + " " + calY;
+  let html = l10n().wd.map(w => '<span class="wd">'+w+'</span>').join("");
   for (const c of cells){
     const d = c.d, iso = hoursIso(d);
     const cls = ["cal-day"];
@@ -1042,7 +1246,7 @@ function buildCal(){
     const hasData = has.has(iso);
     if (hasData) cls.push("has");
     html += '<button type="button" class="'+cls.join(" ")+'" data-d="'+iso+'"'+
-      (d > today ? " disabled" : "")+(hasData ? ' title="есть замеры"' : "")+'>'+d.getDate()+'</button>';
+      (d > today ? " disabled" : "")+(hasData ? ' title="'+esc(t("cal_has"))+'"' : "")+'>'+d.getDate()+'</button>';
   }
   $("calGrid").innerHTML = html;
   $("calGrid").querySelectorAll("button:not([disabled])").forEach(b =>
@@ -1071,17 +1275,17 @@ function renderWatch(list){
     return;
   }
   box.style.display = "";
-  box.innerHTML = '<div class="watch-title">Наблюдение за хостами</div>' + list.map(j => {
+  box.innerHTML = '<div class="watch-title">'+esc(t("watch_title"))+'</div>' + list.map(j => {
     const ok = j.lastMs >= 0 && j.failStreak === 0;
     const rate = j.total ? Math.round((j.total - j.fails) * 100 / j.total) : 100;
     const since = j.since ? hhmm(Date.parse(j.since)) : "";
+    const tip = t("watch_since", since) + (j.failStreak > 0 ? " · " + t("watch_streak", j.failStreak) : "");
     return '<div class="watch-row">' +
       '<span class="watch-dot ' + (ok ? "ok" : "bad") + '"></span>' +
-      '<span class="watch-host" title="следим с ' + since +
-        (j.failStreak > 0 ? ' · подряд без ответа: ' + j.failStreak : "") + '">' + esc(j.host) + '</span>' +
-      '<span class="watch-ms">' + (j.lastMs >= 0 ? j.lastMs + " мс" : "нет ответа") + '</span>' +
+      '<span class="watch-host" title="'+esc(tip)+'">' + esc(j.host) + '</span>' +
+      '<span class="watch-ms">' + (j.lastMs >= 0 ? j.lastMs + " " + t("ms") : t("watch_no_reply")) + '</span>' +
       '<span class="watch-rate">' + rate + '%</span>' +
-      '<span class="watch-every">каждые ' + j.intervalMin + ' мин</span>' +
+      '<span class="watch-every">' + esc(t("watch_every", j.intervalMin)) + '</span>' +
       '</div>';
   }).join("");
 }
@@ -1100,21 +1304,21 @@ function renderHead(){
   const ico = $("hIco"), title = $("hTitle"), btn = $("runBtn");
   if (st.checking){
     ico.classList.add("busy");
-    title.textContent = "Идёт проверка · " + phaseRU(st.phase) +
-      (st.frac > 0 ? " " + Math.round(st.frac*100) + "%" : "");
-    btn.disabled = true; btn.textContent = "⏳ Идёт проверка…";
+    title.textContent = t("checking_head", phaseLabel(st.phase),
+      st.frac > 0 ? Math.round(st.frac*100) + "%" : "");
+    btn.disabled = true; btn.textContent = t("btn_checking");
   } else {
     ico.classList.remove("busy");
-    title.textContent = "Мониторинг сети";
-    btn.disabled = false; btn.textContent = "▶ Проверить сейчас";
+    title.textContent = t("h_title");
+    btn.disabled = false; btn.textContent = t("run_now");
   }
 
   // панель поверх графика
   const probe = $("probe");
   if (st.checking){
     probe.classList.add("show");
-    $("probeTxt").textContent = "Проверка · " + phaseRU(st.phase) +
-      (st.frac > 0 ? " " + Math.round(st.frac*100) + "%" : "");
+    $("probeTxt").textContent = t("probe_check", phaseLabel(st.phase),
+      st.frac > 0 ? Math.round(st.frac*100) + "%" : "");
     $("probeBar").style.width = Math.round((st.frac||0)*100) + "%";
   } else probe.classList.remove("show");
 
@@ -1127,15 +1331,15 @@ function renderHead(){
   chip.className = "chip show " + (err ? "bad" : z);
   const mark = err ? "✗" : "✓";
   if (err){
-    chip.innerHTML = '<span class="mark">✗</span><span class="v">'+hhmm(Date.parse(last.ts))+
-      ' — проверка не удалась: '+esc(shortErr(last))+'</span>';
+    chip.innerHTML = '<span class="mark">✗</span><span class="v">'+
+      esc(t("chip_fail", hhmm(Date.parse(last.ts)), shortErr(last)))+'</span>';
   } else {
     chip.innerHTML = '<span class="mark" style="color:'+zoneColor(z)+'">✓</span>'+
-      '<span class="v">последняя проверка '+hhmmss(Date.parse(last.ts))+'</span>'+
+      '<span class="v">'+esc(t("chip_last", hhmmss(Date.parse(last.ts))))+'</span>'+
       '<span class="v">'+esc(last.server||"—")+(last.net ? ' · '+esc(last.net.slice(0,28)) : '')+'</span>'+
-      '<span class="v">↓ '+last.down.toFixed(1)+' ↑ '+last.up.toFixed(1)+' Мбит/с</span>'+
-      '<span class="v">пинг '+Math.round(last.ping)+' мс · джиттер '+Math.round(last.jitter)+' мс</span>'+
-      (last.loss>0 ? '<span class="v">потери '+last.loss.toFixed(1)+'%</span>' : '');
+      '<span class="v">↓ '+last.down.toFixed(1)+' ↑ '+last.up.toFixed(1)+' '+esc(t("mbps"))+'</span>'+
+      '<span class="v">'+esc(t("chip_ping", Math.round(last.ping)))+' · '+esc(t("chip_jitter", Math.round(last.jitter)))+'</span>'+
+      (last.loss>0 ? '<span class="v">'+esc(t("chip_loss", last.loss.toFixed(1)))+'</span>' : '');
   }
 }
 const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -1150,11 +1354,11 @@ let histShown = HIST_PAGE, histSig = "";
 // остаётся в подсказке при наведении
 function shortErr(e){
   const s = (e.err || "").toLowerCase();
-  const conn = s.includes("нет соединения") || s.includes("dial ") ||
-    s.includes("get \"http") || s.includes("timeout") ||
+  const conn = s.includes("нет соединения") || s.includes("cannot reach") ||
+    s.includes("dial ") || s.includes("get \"http") || s.includes("timeout") ||
     s.includes("deadline") || s.includes("connection refused") ||
     s.includes("no such host");
-  return conn ? "ошибка соединения" : (e.err || "").slice(0, 60);
+  return conn ? t("conn_error") : (e.err || "").slice(0, 60);
 }
 
 function renderHist(){
@@ -1164,9 +1368,9 @@ function renderHist(){
     histShown = HIST_PAGE;
     box.innerHTML = '<div class="empty-big">'+
       '<span class="e-ico">📭</span>'+
-      '<span class="e-t">Измерений пока нет</span>'+
-      '<span class="e-s">первая проверка займёт ~10–15 секунд</span>'+
-      '<button class="btn" id="emptyRun" type="button">▶ Сделать измерение</button></div>';
+      '<span class="e-t">'+esc(t("hist_empty_t"))+'</span>'+
+      '<span class="e-s">'+esc(t("hist_empty_s"))+'</span>'+
+      '<button class="btn" id="emptyRun" type="button">'+esc(t("hist_empty_btn"))+'</button></div>';
     $("emptyRun").addEventListener("click", () => $("runBtn").click());
     return;
   }
@@ -1174,7 +1378,7 @@ function renderHist(){
   const sig = flt.loc+"|"+flt.tod+"|"+flt.period;
   if (sig !== histSig){ histSig = sig; histShown = HIST_PAGE; }
   if (!h.length){
-    box.innerHTML = '<div class="empty">По выбранным фильтрам ничего не найдено.</div>';
+    box.innerHTML = '<div class="empty">'+esc(t("hist_no_match"))+'</div>';
     return;
   }
   const shown = h.slice(0, histShown);
@@ -1182,14 +1386,14 @@ function renderHist(){
   const TICKS = 24;
   let html = "";
   for (const e of shown){
-    const t = Date.parse(e.ts);
-    const sameDay = new Date(t).toDateString() === new Date().toDateString();
-    const locTip = "сервер: "+locOf(e)+(e.colo?" ("+e.colo+")":"")+(e.net?" · сеть: "+e.net:"");
+    const ts = Date.parse(e.ts);
+    const sameDay = new Date(ts).toDateString() === new Date().toDateString();
+    const locTip = t("hist_loc_tip", locOf(e), e.colo || "", e.net || "");
     const loc = '<span class="r-loc" title="'+esc(locTip)+'">'+esc(locOf(e))+'</span>';
     if (e.err){
       html += '<div class="row" title="'+esc(e.err)+'">'+
-        '<span class="r-time">'+hhmmss(t)+'</span>'+
-        (sameDay ? "" : '<span class="r-date">'+dmy(t)+'</span>')+
+        '<span class="r-time">'+hhmmss(ts)+'</span>'+
+        (sameDay ? "" : '<span class="r-date">'+dmy(ts)+'</span>')+
         loc+
         '<span class="r-err">✗ '+esc(shortErr(e))+'</span></div>';
       continue;
@@ -1200,28 +1404,28 @@ function renderHist(){
     for (let i=0;i<TICKS;i++)
       bar += '<i class="'+(i<fill?("f "+z):"")+(i===fill-1&&fill<TICKS?" half":"")+'"></i>';
     const tip = locOf(e)+(e.colo?" ("+e.colo+")":"")+(e.net?" · "+e.net:"")+"\n"+
-      "↓ "+e.down.toFixed(1)+" ↑ "+e.up.toFixed(1)+" Мбит/с, "+
-      "пинг "+e.ping.toFixed(1)+" мс, джиттер "+e.jitter.toFixed(1)+" мс, "+
-      "потери "+e.loss.toFixed(1)+"%"+
-      (e.dur_ms>0?", "+(e.dur_ms/1000).toFixed(0)+" с":"")+
-      (e.trunc?" (тест обрезан)":"");
+      "↓ "+e.down.toFixed(1)+" ↑ "+e.up.toFixed(1)+" "+t("mbps")+", "+
+      t("chip_ping", e.ping.toFixed(1)) + ", " + t("chip_jitter", e.jitter.toFixed(1)) + ", " +
+      t("chip_loss", e.loss.toFixed(1))+
+      (e.dur_ms>0?", "+(e.dur_ms/1000).toFixed(0)+" "+t("sec"):"")+
+      (e.trunc?t("trunc_note"):"");
     html += '<div class="row" title="'+esc(tip)+'">'+
-      '<span class="r-time">'+hhmmss(t)+'</span>'+
-      (sameDay ? "" : '<span class="r-date">'+dmy(t)+'</span>')+
+      '<span class="r-time">'+hhmmss(ts)+'</span>'+
+      (sameDay ? "" : '<span class="r-date">'+dmy(ts)+'</span>')+
       loc+
       '<div class="r-bar">'+bar+'</div>'+
       '<span class="r-val '+z+'">↓ '+e.down.toFixed(1)+'</span>'+
       '<span class="r-up">↑ '+e.up.toFixed(1)+'</span>'+
-      '<span class="r-extra">'+(e.dur_ms>0?(e.dur_ms/1000).toFixed(0)+" с":"")+'</span></div>';
+      '<span class="r-extra">'+(e.dur_ms>0?(e.dur_ms/1000).toFixed(0)+" "+t("sec"):"")+'</span></div>';
   }
   // пейджинг: «показать ещё по 10», «свернуть» — если список раскрыт
   const nav = [];
   const rest = h.length - shown.length;
   if (rest > 0){
-    nav.push('<button class="foot-btn" id="histMore" type="button" title="Раскрыть следующие '+Math.min(HIST_PAGE,rest)+'">показать ещё '+Math.min(HIST_PAGE,rest)+' из '+rest+'</button>');
+    nav.push('<button class="foot-btn" id="histMore" type="button" title="'+esc(t("show_more_tip", Math.min(HIST_PAGE,rest)))+'">'+esc(t("show_more", Math.min(HIST_PAGE,rest), rest))+'</button>');
   }
   if (histShown > HIST_PAGE){
-    nav.push('<button class="foot-btn" id="histLess" type="button">свернуть</button>');
+    nav.push('<button class="foot-btn" id="histLess" type="button">'+esc(t("collapse"))+'</button>');
   }
   if (nav.length) html += '<div class="hist-nav">'+nav.join("")+'</div>';
   box.innerHTML = html;
@@ -1256,7 +1460,12 @@ function drawChart(){
 
   const s = st && st.series || [];
   $("chartEmpty").style.display = s.length < 2 ? "flex" : "none";
-  if (s.length < 2) return;
+  if (s.length < 2){
+    $("fPoints").textContent = t("points", s.length);
+    $("fWindow").textContent = t("window_min", 0);
+    $("fBad").textContent = "";
+    return;
+  }
 
   const padL=40, padR=8, padT=16, padB=22;
   const t0=s[0][0], t1=s[s.length-1][0], span=Math.max(t1-t0,1);
@@ -1343,9 +1552,9 @@ function drawChart(){
 
   // подвал графика
   $("peak").textContent = Math.round(peak);
-  $("fPoints").textContent = "точек " + s.length;
-  $("fWindow").textContent = "окно " + Math.max(1, Math.round((t1-t0)/60000)) + " мин";
-  $("fBad").textContent = st.badMbps ? "красный ниже " + Math.round(st.badMbps) + " Мбит/с" : "";
+  $("fPoints").textContent = t("points", s.length);
+  $("fWindow").textContent = t("window_min", Math.max(1, Math.round((t1-t0)/60000)));
+  $("fBad").textContent = st.badMbps ? t("red_below", Math.round(st.badMbps)) : "";
 }
 
 /* ── частота обновления живого графика ───────────────────────── */
@@ -1376,8 +1585,11 @@ $("netRate").addEventListener("change", e => {
 
 /* ── кто потребляет интернет ─────────────────────────────────── */
 let procOpen = false, procTab = "procs", pn = null;
-const fmtBps = b => b >= (1<<20) ? (b/(1<<20)).toFixed(1)+" МБ/с"
-  : b >= (1<<10) ? (b/(1<<10)).toFixed(1)+" КБ/с" : Math.round(b)+" Б/с";
+const fmtBps = b => {
+  const u = l10n().bps;
+  return b >= (1<<20) ? (b/(1<<20)).toFixed(1)+" "+u[0]
+    : b >= (1<<10) ? (b/(1<<10)).toFixed(1)+" "+u[1] : Math.round(b)+" "+u[2];
+};
 
 $("procBtn").addEventListener("click", () => setProcOpen(!procOpen));
 $("procClose").addEventListener("click", () => setProcOpen(false));
@@ -1405,12 +1617,12 @@ async function loadProcnet(){
 
 function renderProc(){
   if (!procOpen || !pn) return;
-  $("procHint").textContent = "обновление " + Math.round(rateMs/1000) + " с";
+  $("procHint").textContent = t("proc_refresh", Math.round(rateMs/1000));
   const body = $("procBody");
   if (procTab === "procs"){
     const rows = pn.procs || [];
     if (!rows.length){
-      body.innerHTML = '<div class="proc-empty">активных соединений нет</div>';
+      body.innerHTML = '<div class="proc-empty">'+esc(t("proc_no_conns"))+'</div>';
       return;
     }
     body.innerHTML = rows.map(p => {
@@ -1418,13 +1630,13 @@ function renderProc(){
       return '<div class="pr-row" title="'+esc(hosts)+'">'+
         '<span class="pr-name">'+esc(p.name || ("pid "+p.pid))+'</span>'+
         '<span class="pr-hosts">'+esc(hosts)+'</span>'+
-        '<span class="pr-conns">'+p.conns+' соед.</span>'+
+        '<span class="pr-conns">'+p.conns+' '+esc(t("conns_short"))+'</span>'+
         '<span class="pr-bps'+(p.bps < 1 ? " zero" : "")+'">≈ '+fmtBps(p.bps)+'</span></div>';
     }).join("");
   } else {
     const rows = pn.conns || [];
     if (!rows.length){
-      body.innerHTML = '<div class="proc-empty">активных соединений нет</div>';
+      body.innerHTML = '<div class="proc-empty">'+esc(t("proc_no_conns"))+'</div>';
       return;
     }
     body.innerHTML = rows.map(c => {
@@ -1451,9 +1663,10 @@ const AP_CELLS = Array.from({length:9}, (_,i) =>
   document.querySelectorAll("[data-ap-glyph]").forEach(el => el.innerHTML = AP_CELLS);
 })();
 
-const fmtElapsed = s => s >= 60
-  ? Math.floor(s/60) + " м " + (s%60).toFixed(1) + " с"
-  : s.toFixed(1) + " с";
+const fmtElapsed = s => {
+  const u = l10n().el;
+  return s >= 60 ? Math.floor(s/60) + u[0] + (s%60).toFixed(1) + u[1] : s.toFixed(1) + u[1];
+};
 
 // один таймер на всё: время инициализации и время «думаю» в чате
 setInterval(() => {
@@ -1476,7 +1689,7 @@ function updateThinkProgress(){
     : active.name;
   if (stepsEl){
     stepsEl.innerHTML = stages
-      .filter(s => s.name !== "готово" && s.state === "done")
+      .filter(s => s.name !== "готово" && s.name !== "done" && s.state === "done")
       .map(s => {
         const note = s.note ? " — " + esc(s.note.slice(0, 60)) : "";
         return '<div class="ap-step done">' + esc(s.name) + note + '</div>';
@@ -1506,19 +1719,19 @@ function renderAgent(){
   orbBtn.classList.toggle("ready", a.status === "ready");
   st.className = "agent-status" + (a.status === "ready" ? " ready" : a.status === "error" ? " err" : "");
   st.textContent =
-    a.status === "off"    ? "не запущен — нажмите «Инициализировать»" :
-    a.status === "starting" ? (a.phase || "запускаюсь") + "…" :
-    a.status === "ready"  ? "на связи" + (a.model ? " · модель " + a.model : "") + " · всё локально" :
-    (a.err || "ошибка");
+    a.status === "off"    ? t("ag_off") :
+    a.status === "starting" ? (a.phase || t("ag_starting")) + "…" :
+    a.status === "ready"  ? t("ag_ready") + (a.model ? t("ag_model") + a.model : "") + t("ag_local") :
+    (a.err || t("ag_error"));
   $("agentInitBtn").style.display = (a.status === "off" || a.status === "error") ? "" : "none";
-  $("agentInitBtn").textContent = a.status === "error" ? "Повторить" : "Инициализировать";
+  $("agentInitBtn").textContent = a.status === "error" ? t("ag_retry") : t("initialize");
   $("agentStopBtn").style.display = (a.status === "ready" || a.status === "starting") ? "" : "none";
   $("agentChatSec").style.display = a.status === "ready" ? "" : "none";
   const ov = $("agentLoading");
   if (a.status === "starting"){
     ov.style.display = "flex";
-    $("agentPhase").textContent = (a.phase || "запускаюсь") + "…";
-    $("loadLabel").textContent = a.phase || "запускаюсь";
+    $("agentPhase").textContent = (a.phase || t("ag_starting")) + "…";
+    $("loadLabel").textContent = a.phase || t("ag_starting");
     if (!initStartedAt) initStartedAt = performance.now();
     vpRun($("agentLoading"), a.phase || "", !vpTimer, a.prog || 0, a.step || 0);
     if (!initPoll) initPoll = setInterval(loadAgent, 700); // живые проценты
@@ -1533,18 +1746,13 @@ function renderAgent(){
   if (a.status === "off" || a.status === "error"){
     // вместо «Выводов» — подсказка, какие команды понимает агент
     sec.style.display = "";
-    $("agentInsightsTitle").textContent = "Что он умеет";
+    $("agentInsightsTitle").textContent = t("ag_can_do");
     box.innerHTML =
-      '<div class="ai-line">После инициализации пишите в чате, например:</div>' +
-      ['«сделай замер и объясни результат»',
-       '«какая локация сейчас быстрее?»',
-       '«когда лучше качать большие файлы?»',
-       '«поставь автопроверку каждые 30 минут»',
-       '«следи за router.local каждые 5 минут»']
-        .map(s => '<div class="ai-line">· ' + esc(s) + '</div>').join("");
+      '<div class="ai-line">'+esc(t("ag_hint"))+'</div>' +
+      t("ag_examples").map(s => '<div class="ai-line">· ' + esc(s) + '</div>').join("");
   } else if (a.insights && a.insights.length){
     sec.style.display = "";
-    $("agentInsightsTitle").textContent = "Выводы";
+    $("agentInsightsTitle").textContent = t("insights");
     box.innerHTML = a.insights.slice(0, 3).map(s => '<div class="ai-line">· ' + esc(s) + '</div>').join("");
   } else {
     sec.style.display = "none";
@@ -1569,7 +1777,7 @@ function renderChat(msgs){
   chatLen = msgs.length;
   log.innerHTML = msgs.length ? msgs.map(m =>
     '<div class="bubble ' + (m.role === "user" ? "user" : "bot") + '">' + esc(m.content) + '</div>'
-  ).join("") : '<div class="bubble bot">Привет! Чем могу помочь?</div>';
+  ).join("") : '<div class="bubble bot">'+esc(t("greeting"))+'</div>';
   if (isNew) chatToNew();
 }
 
@@ -1608,7 +1816,7 @@ function vpSteps(root, step){
 function vpRun(root, phase, fresh, prog, step){
   vpReal = prog > 0;
   vpTargetVal = vpReal ? Math.min(99, prog * 100)
-    : (phase.indexOf("загружаю") === 0 ? 95 : 25); // сервер → модель
+    : (phase.indexOf("загружаю") === 0 || phase.indexOf("loading") === 0 ? 95 : 25); // сервер → модель
   if (vpTargetVal < vpVal) vpTargetVal = vpVal;   // назад не откатываемся
   if (fresh) vpVal = 0;
   vpSteps(root, step);
@@ -1637,24 +1845,20 @@ function vpDone(root){
 /* ── архив данных: экспорт/импорт (прогресс переиспользует vp) ─────── */
 let archActive = false, archPoll = null, archText = null;
 const archOverlay = $("archOverlay");
-const ARCH_STEPS = {
-  export: ["сбор данных", "запись файла", "готово"],
-  import: ["чтение и проверка", "запись строк", "сохранение"]
-};
 function archStepsUI(op, step){
-  $("archSteps").innerHTML = ARCH_STEPS[op].map((t, i) =>
-    `<span data-ls="${i}" class="${i < step ? "done" : i === step ? "act" : ""}"><i></i>${t}</span>`).join("");
+  $("archSteps").innerHTML = l10n().archSteps[op].map((s, i) =>
+    `<span data-ls="${i}" class="${i < step ? "done" : i === step ? "act" : ""}"><i></i>${s}</span>`).join("");
 }
-function archPhaseUI(t, err){
+function archPhaseUI(text, err){
   const el = $("archPhase");
-  el.textContent = t;
+  el.textContent = text;
   el.classList.toggle("err", !!err);
 }
 function archOverlayShow(title, op){
   $("archTitle").textContent = title;
   $("archAsk").style.display = "none";
   archStepsUI(op, 0);
-  archPhaseUI("готовлюсь…");
+  archPhaseUI(t("preparing"));
   archOverlay.style.display = "flex";
   vpRun(archOverlay, "", true, 0, 0);
 }
@@ -1668,7 +1872,7 @@ async function pollArchStatus(){
     const s = await (await fetch("/api/archive/status", {cache:"no-store"})).json();
     if (s.status !== "busy") return;
     const p = s.phase || "";
-    const step = p.startsWith("записываю") ? 1 : 0;
+    const step = p.startsWith("записываю") || p.startsWith("writ") ? 1 : 0;
     archStepsUI(s.op === "export" ? "export" : "import", step);
     archPhaseUI(p);
     vpRun(archOverlay, p, false, s.prog || 0, step);
@@ -1686,11 +1890,11 @@ function archFinish(msg, err){
 $("archExportBtn").addEventListener("click", async () => {
   if (archActive) return;
   archActive = true;
-  archOverlayShow("Экспорт архива", "export");
+  archOverlayShow(t("arch_export_title"), "export");
   archPoll = setInterval(pollArchStatus, 500);
   try{
     const r = await fetch("/api/archive/export", {cache:"no-store"});
-    if (!r.ok){ archFinish("Ошибка: " + (await r.text()).slice(0, 140), true); return; }
+    if (!r.ok){ archFinish(t("error_prefix") + (await r.text()).slice(0, 140), true); return; }
     const blob = await r.blob();
     const cd = r.headers.get("Content-Disposition") || "";
     const name = (cd.match(/filename="([^"]+)"/) || [, "speedtest-archive.jsonl"])[1];
@@ -1700,8 +1904,8 @@ $("archExportBtn").addEventListener("click", async () => {
     a.click();
     URL.revokeObjectURL(a.href);
     archStepsUI("export", 2);
-    archFinish("Файл сохранён: " + name);
-  }catch(e){ archFinish("Ошибка: " + e, true); }
+    archFinish(t("file_saved", name));
+  }catch(e){ archFinish(t("error_prefix") + e, true); }
 });
 
 // импорт: выбор файла → проверка → (пересечение? вопрос) → загрузка
@@ -1715,41 +1919,37 @@ $("archFile").addEventListener("change", async () => {
   archActive = true;
   try{ archText = await f.text(); }
   catch(e){ archActive = false; return; }
-  archOverlayShow("Загрузка архива", "import");
-  archPhaseUI("проверяю файл…");
+  archOverlayShow(t("arch_import_title"), "import");
+  archPhaseUI(t("checking_file"));
   try{
     const r = await fetch("/api/archive/import?mode=check",
       {method:"POST", headers:{"Content-Type": "application/jsonl"}, body:archText});
     const res = await r.json();
-    if (!r.ok){ archFinish("Ошибка: " + (res.error || r.statusText), true); return; }
+    if (!r.ok){ archFinish(t("error_prefix") + (res.error || r.statusText), true); return; }
     if (res.overlapCount > 0){
       vpDone(archOverlay);
-      archPhaseUI("Найдено пересечение с существующей историей");
-      $("archAskText").textContent =
-        "Период " + res.from + " – " + res.to + " уже есть в истории: совпадает " +
-        res.overlapCount + " из " + res.checks + " замеров." +
-        (res.hasTraffic ? " В архиве также есть данные трафика." : "") +
-        " Перезаписать совпавшие замеры или пропустить их (загрузить только новые)?";
+      archPhaseUI(t("overlap_found"));
+      $("archAskText").textContent = t("overlap_ask", res);
       $("archAsk").style.display = "flex";
     } else {
       applyArch("skip");
     }
-  }catch(e){ archFinish("Ошибка: " + e, true); }
+  }catch(e){ archFinish(t("error_prefix") + e, true); }
 });
 async function applyArch(mode){
   const body = archText;
   $("archAsk").style.display = "none";
   archStepsUI("import", 1);
-  archPhaseUI("загружаю…");
+  archPhaseUI(t("loading"));
   archPoll = setInterval(pollArchStatus, 400);
   try{
     const r = await fetch("/api/archive/import?mode=" + mode,
       {method:"POST", headers:{"Content-Type": "application/jsonl"}, body});
     const res = await r.json();
-    if (!r.ok){ archFinish("Ошибка: " + (res.error || r.statusText), true); return; }
+    if (!r.ok){ archFinish(t("error_prefix") + (res.error || r.statusText), true); return; }
     archStepsUI("import", 2);
-    archFinish(res.message || "Готово");
-  }catch(e){ archFinish("Ошибка: " + e, true); }
+    archFinish(res.message || t("done"));
+  }catch(e){ archFinish(t("error_prefix") + e, true); }
 }
 $("archOverwrite").addEventListener("click", () => applyArch("overwrite"));
 $("archSkip").addEventListener("click", () => applyArch("skip"));
@@ -1794,8 +1994,8 @@ async function sendChat(){
     '<div class="bubble bot think" id="chatThinking">' +
       '<div class="agent-progress">' +
         '<span class="ap-glyph">' + AP_CELLS + '</span>' +
-        '<span class="ap-label" id="apLabel">обрабатываю запрос</span>' +
-        '<span class="ap-time" id="apTime">0.0 с</span>' +
+        '<span class="ap-label" id="apLabel">'+esc(t("processing"))+'</span>' +
+        '<span class="ap-time" id="apTime">' + esc(fmtElapsed(0)) + '</span>' +
       '</div>' +
       '<div class="agent-steps" id="agentSteps"></div>' +
     '</div>');
@@ -1815,7 +2015,7 @@ async function sendChat(){
     }
   }catch(e){
     const th = $("chatThinking");
-    if (th) th.textContent = "⚠ нет связи с приложением";
+    if (th) th.textContent = t("no_link");
   }
   clearInterval(progressPoll);
   chatBusy = false;
@@ -1823,11 +2023,6 @@ async function sendChat(){
 }
 $("chatSend").addEventListener("click", sendChat);
 $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
-for (const b of document.querySelectorAll(".chip-q"))
-  b.addEventListener("click", () => {
-    $("chatInput").value = b.dataset.q;
-    $("chatInput").focus();
-  });
 
 /* ── опрос ───────────────────────────────────────────────────── */
 async function tick(){
@@ -1835,6 +2030,14 @@ async function tick(){
     const r = await fetch("/api/state", {cache:"no-store"});
     st = await r.json();
     syncRate();
+    // сервер — источник правды о языке (меняли из трея или другой вкладки)
+    if (st.lang && st.lang !== LANG){
+      LANG = st.lang;
+      try{ localStorage.setItem("stt_lang", LANG); }catch(e){}
+      applyStatic();
+      dotPat = null;
+      if ($("hoursCal").classList.contains("open")) buildCal();
+    }
     $("connLost").classList.remove("show");
     renderHead(); renderDyn(); drawChart(); renderWatch(st.watch);
     if (procOpen) loadProcnet();
@@ -1883,6 +2086,8 @@ $("runBtn").addEventListener("click", async () => {
   clearTimeout(pollTimer); tick();
 });
 window.addEventListener("resize", () => { if (st){ drawChart(); drawHours(); } });
+applyStatic();
+syncHoursUI();
 tick();
 </script>
 </body>

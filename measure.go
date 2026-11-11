@@ -92,7 +92,7 @@ func RunCheck(cfg *Config, progress ProgressFn) *Result {
 	pg("meta", 0)
 	m, err := fetchMeta(ctx, client)
 	if err != nil {
-		res.Err = fmt.Sprintf("нет соединения с speed.cloudflare.com: %v", err)
+		res.Err = fmt.Sprintf(T("err_no_conn"), err)
 		return res
 	}
 	pg("meta", 1)
@@ -154,7 +154,7 @@ func fetchMeta(ctx context.Context, c *http.Client) (*meta, error) {
 		return nil, err
 	}
 	if m.ClientIP == "" {
-		return nil, errors.New("/meta вернул пустой ответ")
+		return nil, errors.New(T("err_meta_empty"))
 	}
 	return &m, nil
 }
@@ -186,7 +186,7 @@ func probeTTFB(ctx context.Context, c *http.Client) (float64, error) {
 
 func measureLatency(ctx context.Context, c *http.Client, probes int, res *Result, pg ProgressFn) error {
 	if _, err := probeTTFB(ctx, c); err != nil { // прогрев соединения
-		return fmt.Errorf("пинг: %w", err)
+		return fmt.Errorf(T("err_ping"), err)
 	}
 	samples := make([]float64, 0, probes)
 	for i := 0; i < probes; i++ {
@@ -197,7 +197,7 @@ func measureLatency(ctx context.Context, c *http.Client, probes int, res *Result
 		pg("ping", float64(i+1)/float64(probes))
 	}
 	if len(samples) < 2 {
-		return errors.New("пинг: все пробы не удались")
+		return errors.New(T("err_ping_all"))
 	}
 	var sum, jitter float64
 	for i, v := range samples {
@@ -305,12 +305,12 @@ func downloadAttempt(ctx context.Context, c *http.Client, cfg *Config, res *Resu
 		*req = *req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 		resp, err := c.Do(req)
 		if err != nil {
-			return fmt.Errorf("загрузка: %w", err)
+			return fmt.Errorf(T("err_dl"), err)
 		}
 		if resp.StatusCode >= 400 {
 			code := resp.StatusCode
 			resp.Body.Close()
-			return fmt.Errorf("загрузка: HTTP %d — Cloudflare отклонил запрос; уменьшите объём теста или проверяйте реже", code)
+			return fmt.Errorf(T("err_dl_http"), code)
 		}
 		pg("download", float64(total)/float64(n))
 		for {
@@ -333,9 +333,9 @@ func downloadAttempt(ctx context.Context, c *http.Client, cfg *Config, res *Resu
 
 	if total < 1<<20 { // меньше мегабайта — это не измерение
 		if readErr != nil {
-			return fmt.Errorf("загрузка: получено всего %d байт: %w", total, readErr)
+			return fmt.Errorf(T("err_dl_short"), total, readErr)
 		}
-		return fmt.Errorf("загрузка: получено всего %d байт", total)
+		return fmt.Errorf(T("err_dl_short2"), total)
 	}
 	if total < n {
 		res.Truncated = true
@@ -368,7 +368,7 @@ func measureUpload(ctx context.Context, c *http.Client, cfg *Config, res *Result
 
 	payload := make([]byte, n)
 	if _, err := rand.Read(payload); err != nil {
-		return fmt.Errorf("отдача: %w", err)
+		return fmt.Errorf(T("err_ul"), err)
 	}
 
 	stop := make(chan struct{})
@@ -417,18 +417,18 @@ func measureUpload(ctx context.Context, c *http.Client, cfg *Config, res *Result
 			res.UploadMbps = mbps(cr.read.Load(), elapsed)
 			return nil
 		}
-		return fmt.Errorf("отдача: %w", err)
+		return fmt.Errorf(T("err_ul"), err)
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
 	if resp.StatusCode >= 400 {
 		code := resp.StatusCode
 		resp.Body.Close()
-		return fmt.Errorf("отдача: HTTP %d — Cloudflare отклонил запрос; уменьшите объём теста", code)
+		return fmt.Errorf(T("err_ul_http"), code)
 	}
 	resp.Body.Close()
 
 	if cr.read.Load() < n/2 { // отправили меньше половины — не измерение
-		return fmt.Errorf("отдача: отправлено только %d из %d байт", cr.read.Load(), n)
+		return fmt.Errorf(T("err_ul_short"), cr.read.Load(), n)
 	}
 	res.UploadMbps = mbps(cr.read.Load(), elapsed)
 	return nil
@@ -517,8 +517,30 @@ var coloCities = map[string]string{
 	"NRT": "Токио",
 }
 
+// coloCitiesEn — английские названия тех же городов.
+var coloCitiesEn = map[string]string{
+	"AMS": "Amsterdam", "ARN": "Stockholm", "ATH": "Athens", "ATL": "Atlanta",
+	"BCN": "Barcelona", "BER": "Berlin", "BRU": "Brussels", "BUD": "Budapest",
+	"BUH": "Bucharest", "CPH": "Copenhagen", "DME": "Moscow", "DUS": "Düsseldorf",
+	"DXB": "Dubai", "EWR": "New York", "FRA": "Frankfurt", "HAM": "Hamburg",
+	"HEL": "Helsinki", "IST": "Istanbul", "KBP": "Kyiv", "KIV": "Chișinău",
+	"LCA": "Larnaca", "LED": "Saint Petersburg", "LHR": "London", "LIS": "Lisbon",
+	"LUX": "Luxembourg", "LYS": "Lyon", "MAD": "Madrid", "MAN": "Manchester",
+	"MIL": "Milan", "MRS": "Marseille", "MUC": "Munich", "OSL": "Oslo",
+	"OTP": "Bucharest", "PRG": "Prague", "RIX": "Riga", "SOF": "Sofia",
+	"TLL": "Tallinn", "TLV": "Tel Aviv", "VIE": "Vienna", "VNO": "Vilnius",
+	"WAW": "Warsaw", "ZAG": "Zagreb", "YYZ": "Toronto", "ORD": "Chicago",
+	"IAD": "Ashburn", "DFW": "Dallas", "LAX": "Los Angeles", "SJC": "San Jose",
+	"SEA": "Seattle", "MIA": "Miami", "SIN": "Singapore", "HKG": "Hong Kong",
+	"NRT": "Tokyo",
+}
+
 func coloCity(iata string) string {
-	if city, ok := coloCities[iata]; ok {
+	table := coloCities
+	if Lang() == LangEn {
+		table = coloCitiesEn
+	}
+	if city, ok := table[iata]; ok {
 		return city
 	}
 	return iata

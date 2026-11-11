@@ -30,11 +30,12 @@ type app struct {
 }
 
 func main() {
-	once := flag.Bool("once", false, "одна проверка с выводом в консоль, без трея")
-	netmon := flag.Bool("netmon", false, "диагностика монитора трафика: 8 опросов по 2 сек в консоль")
+	once := flag.Bool("once", false, T("flag_once"))
+	netmon := flag.Bool("netmon", false, T("flag_netmon"))
 	flag.Parse()
 
 	cfg, cfgPath := LoadConfig(!*once && !*netmon)
+	SetLang(cfg.Lang)
 
 	if *once {
 		runOnce(cfg)
@@ -109,6 +110,7 @@ func main() {
 	a.watch.Start()
 	a.dash.onRun = a.runNow
 	a.dash.onNetRate = a.setNetRate
+	a.dash.onLang = a.setLang
 	a.dash.Start()
 	systray.Run(a.onReady, func() {
 		a.netMon.Save()
@@ -121,19 +123,19 @@ func main() {
 func runNetMonTest(cfgPath string) {
 	attachConsole()
 	m := NewNetMon(trafficPath(cfgPath))
-	fmt.Println("Мониторинг на 16 секунд (попробуйте что-нибудь открыть в интернете)…")
+	fmt.Println(T("netmon_intro"))
 	for i := 0; i < 8; i++ {
 		time.Sleep(2 * time.Second)
 		m.Poll()
 		s := m.Snapshot()
-		fmt.Printf("  %2d с: ↓ %.1f ↑ %.1f Мбит/с | сегодня ↓%s ↑%s\n",
-			(i+1)*2, s.DownMbps, s.UpMbps, fmtBytes(s.DayDown), fmtBytes(s.DayUp))
+		fmt.Println(fmt.Sprintf(T("netmon_line"),
+			(i+1)*2, s.DownMbps, s.UpMbps, fmtBytes(s.DayDown), fmtBytes(s.DayUp)))
 	}
 }
 
 func (a *app) onReady() {
 	a.ui = newTrayUI(a.cfg, a.cfgPath, a.runNow, a.setInterval,
-		a.setDownloadMB, a.setUploadMB, a.setLimits, a.setNotifyMode)
+		a.setDownloadMB, a.setUploadMB, a.setLimits, a.setNotifyMode, a.setLang)
 	a.ui.dashURL = a.dash.URL()
 	a.ui.build()
 	go a.safeLoop("loop", a.loop)
@@ -300,6 +302,22 @@ func (a *app) setNotifyMode(mode string) {
 	a.ui.notifyModeChanged(mode)
 }
 
+// setLang меняет язык интерфейса: конфиг, глобальный i18n и меню трея.
+func (a *app) setLang(lang string) {
+	if lang != LangRu && lang != LangEn {
+		return
+	}
+	if lang != a.cfg.Lang {
+		a.cfg.Lang = lang
+		a.saveCfg()
+	}
+	SetLang(lang)
+	a.agent.invalidateDigest() // сводка и промпт — на новом языке
+	if a.ui != nil {
+		a.ui.langChanged(lang)
+	}
+}
+
 // setNetRate меняет частоту опроса сети/обновления живого графика
 // (селектор «обновление» на дашборде).
 func (a *app) setNetRate(ms int) {
@@ -317,7 +335,7 @@ func (a *app) setNetRate(ms int) {
 
 func (a *app) saveCfg() {
 	if err := a.cfg.Save(a.cfgPath); err != nil {
-		fmt.Fprintf(os.Stderr, "config: не удалось сохранить %s: %v\n", a.cfgPath, err)
+		fmt.Fprintln(os.Stderr, T("cfg_save_err", a.cfgPath, err))
 	}
 }
 
@@ -343,7 +361,7 @@ func (a *app) check() {
 // runOnce — режим -once: полный отчёт в консоль.
 func runOnce(cfg *Config) {
 	attachConsole()
-	fmt.Println("Идёт проверка (Cloudflare speed test)…")
+	fmt.Println(T("once_intro"))
 	start := time.Now()
 	var lastPhase string
 	res := RunCheck(cfg, func(phase string, frac float64) {
@@ -353,7 +371,7 @@ func runOnce(cfg *Config) {
 		}
 	})
 	if res.Err != "" {
-		fmt.Fprintf(os.Stderr, "Ошибка: %s\n", res.Err)
+		fmt.Fprintln(os.Stderr, T("once_err", res.Err))
 		os.Exit(1)
 	}
 	fmt.Println(report(res, start))
@@ -362,15 +380,15 @@ func runOnce(cfg *Config) {
 func phaseLabel(phase string) string {
 	switch phase {
 	case "meta":
-		return "соединение"
+		return T("ph_meta")
 	case "ping":
-		return "пинг"
+		return T("ph_ping")
 	case "download":
-		return "загрузка"
+		return T("ph_download")
 	case "upload":
-		return "отдача"
+		return T("ph_upload")
 	case "loss":
-		return "потери"
+		return T("ph_loss")
 	}
 	return phase
 }
@@ -378,16 +396,16 @@ func phaseLabel(phase string) string {
 func report(res *Result, start time.Time) string {
 	lines := []string{
 		"──── Speed Test Tray (Cloudflare) ────",
-		fmt.Sprintf("Загрузка:    %.1f Мбит/с%s", res.DownloadMbps, truncMark(res)),
-		fmt.Sprintf("Отдача:      %.1f Мбит/с", res.UploadMbps),
-		fmt.Sprintf("Пинг:        %.1f мс (под нагрузкой: %.1f / %.1f мс)", res.PingMs, res.PingDownMs, res.PingUpMs),
-		fmt.Sprintf("Джиттер:     %.1f мс", res.JitterMs),
-		fmt.Sprintf("Потери:      %.1f%%", res.LossPct),
+		fmt.Sprintf(T("rep_down"), res.DownloadMbps, truncMark(res)),
+		fmt.Sprintf(T("rep_up"), res.UploadMbps),
+		fmt.Sprintf(T("rep_ping"), res.PingMs, res.PingDownMs, res.PingUpMs),
+		fmt.Sprintf(T("rep_jitter"), res.JitterMs),
+		fmt.Sprintf(T("rep_loss"), res.LossPct),
 		fmt.Sprintf("IP:          %s (%s)", res.ClientIP, res.IPVersion),
-		fmt.Sprintf("Сеть:        %s (AS%d)", res.Network, res.ASN),
-		fmt.Sprintf("Сервер:      %s (%s)", res.ServerCity, res.Colo),
-		fmt.Sprintf("Протокол:    %s", res.HTTPProtocol),
-		fmt.Sprintf("Время теста: %s", time.Since(start).Round(time.Second)),
+		fmt.Sprintf(T("rep_net"), res.Network, res.ASN),
+		fmt.Sprintf(T("rep_server"), res.ServerCity, res.Colo),
+		fmt.Sprintf(T("rep_proto"), res.HTTPProtocol),
+		fmt.Sprintf(T("rep_time"), time.Since(start).Round(time.Second)),
 	}
 	out := ""
 	for _, l := range lines {
