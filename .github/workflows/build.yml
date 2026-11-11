@@ -1,0 +1,43 @@
+name: build
+
+# Сборка и тесты на всех поддерживаемых ОС при каждом пуше в main —
+# macOS проверяется здесь (локально её не собрать: cgo + Xcode).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, asset: SpeedTestTray.exe, flags: '-ldflags "-s -w -H=windowsgui"' }
+          - { os: ubuntu-latest, asset: SpeedTestTray-linux-x64, flags: '-ldflags "-s -w"' }
+          - { os: macos-latest, asset: SpeedTestTray-macos-arm64, flags: '-ldflags "-s -w"' }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go build -trimpath ${{ matrix.flags }} -o ${{ matrix.asset }} .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+          retention-days: 7
+      # Intel-маки: macos-13 раннеры долго в очереди — кросс-собираем
+      # x64 на macos-latest (clang умеет -arch x86_64)
+      - name: build macos x64 (cross)
+        if: matrix.os == 'macos-latest'
+        run: GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC="clang -arch x86_64" go build -trimpath -ldflags "-s -w" -o SpeedTestTray-macos-x64 .
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'macos-latest'
+        with:
+          name: SpeedTestTray-macos-x64
+          path: SpeedTestTray-macos-x64
+          retention-days: 7

@@ -1,0 +1,21 @@
+# Сборка и локальное состояние
+SpeedTestTray.exe
+SpeedTestTray.exe~
+config.json
+traffic.json
+*.log
+
+# Локальные каталоги инструментов
+.zcode/
+
+# История проверок дашборда
+history.json
+
+# Зависимости сайта
+site/node_modules/
+agent/
+
+# Служебные файлы агента/архивов
+SpeedTestTray.exe.sha256
+watch.json
+speedtest-archive-*.jsonl

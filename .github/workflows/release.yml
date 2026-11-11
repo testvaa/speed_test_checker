@@ -1,0 +1,58 @@
+name: release
+
+# Пуш тега v* собирает бинари на всех ОС и прикладывает их к релизу.
+# Если релиз ещё не создан вручную (с примечаниями) — создаётся
+# автоматически с generate-notes.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, asset: SpeedTestTray.exe, flags: '-ldflags "-s -w -H=windowsgui"' }
+          - { os: ubuntu-latest, asset: SpeedTestTray-linux-x64, flags: '-ldflags "-s -w"' }
+          - { os: macos-latest, asset: SpeedTestTray-macos-arm64, flags: '-ldflags "-s -w"' }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+      - run: go build -trimpath ${{ matrix.flags }} -o ${{ matrix.asset }} .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+      # Intel-маки: кросс-сборка x64 на macos-latest
+      - name: build macos x64 (cross)
+        if: matrix.os == 'macos-latest'
+        run: GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC="clang -arch x86_64" go build -trimpath -ldflags "-s -w" -o SpeedTestTray-macos-x64 .
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'macos-latest'
+        with:
+          name: release-SpeedTestTray-macos-x64
+          path: SpeedTestTray-macos-x64
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+      - run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}

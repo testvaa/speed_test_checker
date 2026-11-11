@@ -1,0 +1,1889 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>SpeedTestTray · Дашборд</title>
+<style>
+  :root{
+    --bg:#0b0b0c; --card:#131315; --card2:#0f0f11; --border:#232327;
+    --txt:#f2f2f3; --dim:#8d8d93; --dimmer:#5b5b61;
+    --ok:#34d399; --warn:#fbbf24; --bad:#f87171; --up:#6b8aad;
+    --txt2:#cfcfd4; --btn:#1c1c20; --btn2:#26262c; --border2:#3c3c44;
+    --panel:rgba(15,15,17,.55); --dots:rgba(255,255,255,.10);
+    --c-fill:rgba(255,255,255,.04); --c-dot:rgba(255,255,255,.22);
+    --c-grid:#17171b; --c-grid2:#1f1f24; --c-axis:#1e1e23;
+    --c-label:#67676d; --c-line:#ffffff;
+    color-scheme:dark;
+    --mono:"Cascadia Mono","JetBrains Mono",Consolas,ui-monospace,monospace;
+    --sans:system-ui,"Segoe UI",Roboto,sans-serif;
+  }
+  html.light{
+    --bg:#f2f2f5; --card:#ffffff; --card2:#ececf0; --border:#d8d8df;
+    --txt:#1c1c22; --dim:#66666e; --dimmer:#94949c;
+    --ok:#0e9f6e; --warn:#c88708; --bad:#d9534f; --up:#3f6f9e;
+    --txt2:#3a3a42; --btn:#e9e9ee; --btn2:#e0e0e7; --border2:#c2c2cd;
+    --panel:rgba(255,255,255,.7); --dots:rgba(20,20,30,.10);
+    --c-fill:rgba(20,20,40,.05); --c-dot:rgba(20,20,40,.25);
+    --c-grid:#e4e4ea; --c-grid2:#d8d8e0; --c-axis:#c6c6d0;
+    --c-label:#8a8a94; --c-line:#191920;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--txt); font-family:var(--sans);
+    min-height:100vh; padding:32px 20px 56px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1200px;margin:0 auto;display:grid;gap:16px;
+    grid-template-columns:minmax(0,1fr);grid-template-areas:"main" "agent"}
+  .col-main{grid-area:main;display:flex;flex-direction:column;gap:16px;min-width:0}
+  @media(min-width:1150px){
+    .wrap{grid-template-columns:minmax(0,1fr) 384px;grid-template-areas:"main agent"}
+  }
+
+  .card{
+    background:var(--card); border:1px solid var(--border);
+    border-radius:14px; padding:20px 22px;
+  }
+
+  /* ── Шапка: статус + текущая скорость ─────────────────────── */
+  .head{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+  .head-ico{
+    width:38px;height:38px;border-radius:10px;flex:none;
+    background:var(--card2);display:flex;align-items:center;justify-content:center;
+    font-size:17px;color:var(--dim);
+  }
+  .head-ico .dot{width:10px;height:10px;border-radius:50%;background:var(--ok);
+    box-shadow:0 0 10px var(--ok);animation:pulse 2.2s ease-in-out infinite}
+  .head-ico.busy .dot{display:none}
+  .head-ico .spin{display:none;width:16px;height:16px;border-radius:50%;
+    border:2px solid #34343a;border-top-color:var(--txt2);animation:rot .8s linear infinite}
+  .head-ico.busy .spin{display:block}
+  @keyframes rot{to{transform:rotate(360deg)}}
+  @keyframes pulse{50%{opacity:.35}}
+
+  .head-main{flex:1 1 260px;min-width:0}
+  .head-title{font-size:19px;font-weight:650;letter-spacing:.1px}
+  .head-sub{color:var(--dim);font-size:13px;margin-top:3px;font-family:var(--mono)}
+  .head-sub b{color:var(--txt2);font-weight:500}
+
+  .head-right{text-align:right;margin-left:auto}
+  .speed-big{font-family:var(--mono);font-size:40px;font-weight:600;line-height:1;
+    text-shadow:0 0 18px rgba(255,255,255,.25)}
+  .speed-big small{font-size:14px;color:var(--dim);font-weight:400;margin-left:4px}
+  .speed-sub{color:var(--dim);font-size:13px;margin-top:6px;font-family:var(--mono)}
+  .speed-sub .up{color:var(--up)}
+
+  .btn{
+    font:500 13px var(--sans);color:var(--txt2);background:var(--btn);
+    border:1px solid var(--border2);border-radius:8px;padding:7px 14px;cursor:pointer;
+    transition:background .15s,border-color .15s;
+  }
+  .btn:hover:not(:disabled){background:var(--btn2);border-color:var(--border2)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .head-actions{margin-top:12px;display:flex;justify-content:flex-end;gap:8px}
+
+  /* ── Чип последней проверки ────────────────────────────────── */
+  .chip{
+    display:none;align-items:center;gap:8px;font-family:var(--mono);
+    font-size:12.5px;padding:8px 12px;border-radius:9px;
+    border:1px solid var(--border);background:var(--card2);color:var(--dim);
+    border-left:3px solid var(--dimmer); flex-wrap:wrap;
+  }
+  .chip.show{display:flex}
+  .chip .mark{font-size:13px}
+  .chip.ok{border-left-color:var(--ok)}
+  .chip.warn{border-left-color:var(--warn)}
+  .chip.bad{border-left-color:var(--bad)}
+  .chip .v{color:var(--txt2)}
+
+  /* ── График ────────────────────────────────────────────────── */
+  .chart-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+  .chart-label{font:700 13px var(--sans);color:var(--txt2)}
+  .chart-peak{margin-left:auto;color:var(--dimmer);font-size:12.5px;font-family:var(--mono)}
+  .chart-peak i{font-family:Georgia,serif;font-style:italic;color:var(--txt2);font-size:14px}
+
+  .chart-box{position:relative}
+  canvas{display:block;width:100%;height:250px}
+  .chart-empty{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--dimmer);font-size:13px;font-family:var(--mono);
+  }
+  /* полоса «идёт проверка» — в шапке графика, после названия;
+     цвета на var(--panel)/var(--txt2): читаемо в обеих темах */
+  .probe{
+    min-width:190px;align-self:center;
+    background-color:var(--panel);
+    background-image:radial-gradient(var(--dots) 1px, transparent 1.4px);
+    background-size:7px 7px;
+    border:1px dashed var(--border);border-radius:10px;padding:5px 10px;
+    font-family:var(--mono);font-size:12px;color:var(--txt2);display:none;
+  }
+  .probe.show{display:block}
+  .probe .p-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+  .probe .p-row:last-child{margin-bottom:0}
+  .probe .pen{filter:drop-shadow(0 0 4px rgba(255,255,255,.4))}
+  html.light .probe .pen{filter:none}
+  .pbar{height:3px;border-radius:2px;background:var(--btn2);overflow:hidden}
+  .pbar i{display:block;height:100%;width:0;background:var(--txt2);
+    transition:width .5s ease}
+  .chart-foot{display:flex;gap:14px;color:var(--dim);font-size:12px;
+    font-family:var(--mono);margin-top:10px;flex-wrap:wrap;align-items:center}
+  .net-rate{margin-left:auto;display:inline-flex;align-items:center;gap:7px}
+  .net-rate select{background:var(--btn);border-color:var(--border);padding:2px 6px;
+    font-size:11.5px;border-radius:6px}
+  .foot-btn{
+    display:inline-flex;align-items:center;font:500 11.5px var(--mono);color:var(--dim);
+    background:var(--btn);border:1px solid var(--border);border-radius:6px;
+    padding:3px 10px;cursor:pointer;transition:color .15s,border-color .15s;
+  }
+  .foot-btn:hover{color:var(--txt2);border-color:var(--border2)}
+  .foot-btn.on{color:var(--txt2);border-color:var(--border2);background:#22222a}
+
+  /* ── Кто потребляет интернет ───────────────────────────────── */
+  .proc-card{padding:16px 18px 14px}
+  .proc-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .proc-title{font-size:13.5px;font-weight:600;color:var(--txt2)}
+  .proc-tabs{display:flex;gap:4px;background:var(--card2);border:1px solid var(--border);
+    border-radius:8px;padding:2px}
+  .ptab{font:500 11.5px var(--mono);color:var(--dim);background:transparent;border:0;
+    border-radius:6px;padding:4px 10px;cursor:pointer;transition:color .15s}
+  .ptab:hover{color:var(--txt2)}
+  .ptab.on{background:var(--btn2);color:var(--txt2)}
+  .proc-hint{margin-left:auto;color:var(--dimmer);font:11.5px var(--mono)}
+  .proc-body{max-height:270px;overflow:auto}
+  .proc-body::-webkit-scrollbar{width:8px}
+  .proc-body::-webkit-scrollbar-thumb{background:var(--btn2);border-radius:4px}
+  .pr-row{display:flex;align-items:center;gap:12px;padding:9px 2px;
+    border-bottom:1px solid var(--btn);font-family:var(--mono);font-size:12.5px}
+  .pr-row:last-child{border-bottom:none}
+  .pr-name{flex:none;max-width:180px;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;color:var(--txt2)}
+  .pr-hosts{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;color:var(--dimmer);font-size:11.5px}
+  .pr-conns{flex:none;width:60px;text-align:right;color:var(--dimmer)}
+  .pr-bps{flex:none;width:92px;text-align:right;color:var(--txt2)}
+  .pr-bps.zero{color:var(--dimmer)}
+  .cn-row{display:flex;align-items:center;gap:12px;padding:7px 2px;
+    border-bottom:1px solid var(--btn);font-family:var(--mono);font-size:12px}
+  .cn-row:last-child{border-bottom:none}
+  .cn-name{flex:none;width:150px;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;color:var(--txt2)}
+  .cn-proto{flex:none;width:130px;color:var(--dimmer)}
+  .cn-remote{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;color:var(--dimmer)}
+  .cn-remote b{color:var(--txt2);font-weight:500}
+  .proc-note{margin-top:10px;color:var(--dimmer);font:11px var(--mono);line-height:1.6}
+  .proc-empty{color:var(--dimmer);font:12.5px var(--mono);padding:18px 2px;text-align:center}
+
+  /* ── История проверок ──────────────────────────────────────── */
+  /* заголовок секции: строка с опциональной кнопкой */
+  .sec-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 2px 10px}
+  .wrap > .sec-head{margin-top:24px} /* воздух после предыдущей карточки */
+  .sec-title{color:var(--dim);font-size:13px;letter-spacing:.2px}
+  .reset-btn{
+    display:none;font:500 11.5px var(--mono);color:var(--dim);
+    background:var(--btn);border:1px solid var(--border);border-radius:6px;
+    padding:3px 10px;cursor:pointer;margin-left:auto;
+    transition:color .15s,border-color .15s;
+  }
+  .reset-btn.show{display:inline-flex}
+  .reset-btn:hover{color:var(--txt2);border-color:var(--border2)}
+
+  /* модальное окно подтверждения */
+  .modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;
+    justify-content:center;background:rgba(0,0,0,.62)}
+  .modal.show{display:flex}
+  .modal-card{background:var(--card);border:1px solid var(--border);
+    border-radius:14px;padding:24px;max-width:420px;margin:20px}
+  .m-title{font-size:16px;font-weight:650;margin-bottom:10px}
+  .m-text{color:var(--dim);font-size:13.5px;line-height:1.65;margin-bottom:20px}
+  .m-text b{color:var(--txt2);font-weight:500}
+  .m-actions{display:flex;gap:10px;justify-content:flex-end}
+  .btn.danger{background:#3a1d1d;border-color:#6e2f2f;color:#f8a3a3}
+  .btn.danger:hover{background:#472121;border-color:#8a3a3a}
+
+  /* большая заглушка «измерений нет» */
+  .empty-big{display:flex;flex-direction:column;align-items:center;gap:6px;
+    padding:36px 10px;text-align:center}
+  .empty-big .e-ico{font-size:32px;opacity:.8}
+  .empty-big .e-t{font-size:15px;color:var(--txt2);font-weight:550}
+  .empty-big .e-s{font-size:12.5px;color:var(--dimmer);font-family:var(--mono)}
+  .empty-big .btn{margin-top:12px}
+  .hist{padding-top:8px}
+  .row{
+    display:flex;align-items:center;gap:12px;padding:11px 2px;
+    border-bottom:1px solid var(--btn);font-family:var(--mono);font-size:13px;
+  }
+  .row:last-child{border-bottom:none}
+  .r-time{color:var(--dimmer);flex:none;width:62px}
+  .r-date{color:var(--dimmer);flex:none;width:64px;font-size:11.5px}
+  .r-bar{flex:1;display:flex;gap:2px;height:16px;align-items:center;min-width:60px}
+  .r-bar i{flex:1;height:100%;border-radius:1px;background:var(--card2);min-width:2px}
+  .r-bar i.f{opacity:.95}
+  .r-bar i.f.ok{background:var(--ok);box-shadow:0 0 5px rgba(52,211,153,.35)}
+  .r-bar i.f.warn{background:var(--warn)}
+  .r-bar i.f.bad{background:var(--bad);box-shadow:0 0 5px rgba(248,113,113,.35)}
+  .r-bar i.half{opacity:.5}
+  .r-val{flex:none;width:74px;text-align:right;color:var(--txt2)}
+  .r-val.ok{color:var(--ok)}.r-val.warn{color:var(--warn)}.r-val.bad{color:var(--bad)}
+  .r-up{flex:none;width:70px;text-align:right;color:var(--up)}
+  .r-extra{flex:none;width:56px;text-align:right;color:var(--dimmer);font-size:12px}
+  .r-err{flex:1;color:var(--bad);font-size:12px;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+  .empty{color:var(--dimmer);font-size:13px;font-family:var(--mono);padding:16px 2px}
+  .hist-nav{display:flex;justify-content:center;gap:10px;padding:12px 0 2px}
+
+  /* ── Аналитика измерений: единый блок ──────────────────────── */
+  .an{padding:0;overflow:hidden}
+  .an-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+    padding:18px 22px 0}
+  .an-title{font-size:16px;font-weight:650}
+  .an-hint{color:var(--dimmer);font-size:12px;font-family:var(--mono)}
+  .an-head .reset-btn{margin-left:auto}
+  .an .filters{padding:14px 22px 0}
+  .filters{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .filters label{color:var(--dim);font-size:12px;font-family:var(--mono);
+    display:flex;gap:6px;align-items:center}
+  select{
+    background:var(--btn);color:var(--txt2);border:1px solid var(--border2);border-radius:8px;
+    font:12.5px var(--mono);padding:6px 8px;cursor:pointer;
+  }
+  select:focus{outline:none;border-color:var(--border2)}
+  .f-count{margin-left:auto;color:var(--dimmer);font:12px var(--mono)}
+  .an-sec{margin-top:16px;padding:16px 22px 18px;border-top:1px solid var(--btn)}
+  .an-sec-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+    margin-bottom:12px}
+  .an-sec-title{font:700 13px var(--sans);color:var(--txt2)}
+  .an-sec-sub{color:var(--dimmer);font-size:12px;font-family:var(--mono)}
+  .an-sec-head .reset-btn{margin-left:auto}
+
+  .rt-row{display:flex;align-items:center;gap:12px;padding:10px 2px;
+    border-bottom:1px solid var(--btn);font-family:var(--mono);font-size:13px;
+    cursor:pointer;border-radius:4px}
+  .rt-row:hover{background:var(--card2)}
+  .rt-row:last-child{border-bottom:none}
+  .rt-row.active{background:var(--card2);outline:1px solid #2a2a30}
+  .rt-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt2)}
+  .rt-name .colo{color:var(--dimmer);font-size:11px;margin-left:6px}
+  .rt-n{width:38px;text-align:right;color:var(--dimmer)}
+  .rt-avg{width:86px;text-align:right}
+  .rt-avg.ok{color:var(--ok)}.rt-avg.warn{color:var(--warn)}.rt-avg.bad{color:var(--bad)}
+  .rt-best{width:92px;text-align:right;color:var(--dim);font-size:12px}
+  .rt-ping{width:58px;text-align:right;color:var(--dimmer);font-size:12px}
+
+  /* график «скорость по часам суток»: X — час, Y — Мбит/с */
+  .clock-box{position:relative}
+  #hoursChart{display:block;width:100%;height:230px;cursor:crosshair}
+  .clock-tip{position:absolute;display:none;pointer-events:none;z-index:5;
+    background:rgba(29,29,34,.96);border:1px solid var(--border);border-radius:7px;
+    padding:5px 9px;font:11.5px var(--mono);color:var(--txt2);white-space:nowrap}
+  .clock-stats{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;
+    font:12px var(--mono);color:var(--dimmer)}
+  .clock-stats b{color:var(--txt2);font-weight:500}
+  .clock-stats b.ok{color:var(--ok)}
+  .hours-nav{margin-left:auto;display:flex;gap:5px;align-items:center;position:relative}
+  .hours-date{min-width:88px;justify-content:center}
+  .hours-nav .foot-btn:disabled{opacity:.4;cursor:default}
+  /* календарь: дни с замерами отмечены точкой */
+  .cal{position:absolute;top:calc(100% + 6px);right:0;z-index:80;width:242px;display:none;
+    background:var(--card);border:1px solid var(--border2);border-radius:10px;
+    box-shadow:0 12px 40px rgba(0,0,0,.35);padding:10px}
+  .cal.open{display:block}
+  .cal-head{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+  .cal-title{flex:1;text-align:center;font:600 12.5px var(--sans);color:var(--txt2)}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .cal-grid .wd{font:600 10px var(--mono);color:var(--dimmer);text-align:center;padding:2px 0}
+  .cal-day{position:relative;height:26px;border-radius:6px;display:flex;align-items:center;
+    justify-content:center;font:11.5px var(--mono);color:var(--txt2);cursor:pointer;
+    border:none;background:transparent;padding:0}
+  .cal-day:hover{background:var(--btn2)}
+  .cal-day.out{color:var(--dimmer);opacity:.45}
+  .cal-day.fut{opacity:.3;cursor:default}
+  .cal-day.fut:hover{background:transparent}
+  .cal-day.sel{outline:1.5px solid var(--ok);outline-offset:-1.5px}
+  .cal-day.today{font-weight:700}
+  .cal-day.has::after{content:"";position:absolute;bottom:2px;left:50%;
+    transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--ok)}
+
+  .r-loc{flex:none;width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dim)}
+
+  /* ── Трафик ────────────────────────────────────────────────── */
+  .traf{display:flex;gap:12px 28px;flex-wrap:wrap;font-family:var(--mono);font-size:13.5px}
+  .traf div{color:var(--dim)}
+  .traf b{color:var(--txt2);font-weight:500}
+  .conn-lost{display:none;color:var(--bad);font-family:var(--mono);
+    font-size:12.5px;text-align:center;padding:2px}
+  .conn-lost.show{display:block}
+
+  /* ── ИИ-агент ──────────────────────────────────────────────── */
+  .col-agent{grid-area:agent;min-width:0}
+  .agent-card{padding:16px}
+  .agent-head{display:flex;align-items:center;gap:13px}
+  .orb-btn{position:relative;width:56px;height:56px;flex:none;border-radius:50%;
+    border:1px solid var(--border);background:var(--btn2);cursor:pointer;padding:0;
+    transition:border-color .2s, box-shadow .2s, opacity .2s;overflow:hidden}
+  .orb-btn canvas{position:absolute;inset:0;display:block}
+  .orb-btn:hover{border-color:var(--border2)}
+  .orb-btn.off{opacity:.55}
+  .orb-btn.starting{border-color:var(--border2);box-shadow:0 0 16px rgba(255,255,255,.14)}
+  .orb-btn.ready{border-color:var(--border2);box-shadow:0 0 18px rgba(244,244,245,.14)}
+  .orb-fallback{position:absolute;inset:2px;border-radius:50%;background:#18181b}
+  .orb-fallback i{position:absolute;border-radius:999px;background:#f4f4f5;width:13%;height:28%;top:34%}
+  .orb-fallback i:first-child{left:31%}
+  .orb-fallback i:last-child{left:56%}
+  .agent-main{flex:1;min-width:0}
+  .agent-title{font-size:14.5px;font-weight:650}
+  .agent-status{margin-top:2px;font:12px var(--mono);color:var(--dimmer);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .agent-status.ready{color:var(--ok)}
+  .agent-status.err{color:var(--bad)}
+  .agent-btnrow{display:flex;gap:8px;margin-top:12px}
+  .agent-btnrow .btn{flex:1}
+  /* блок «Наблюдение»: фоновые пинги хостов, заведённые через агента */
+  .watch{margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
+  .watch-title{font:700 13px var(--sans);color:var(--txt2);margin-bottom:6px}
+  .watch-row{display:flex;align-items:center;gap:8px;font:11.5px var(--mono);
+    color:var(--txt2);padding:3px 0}
+  .watch-dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .watch-dot.ok{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+  .watch-dot.bad{background:var(--bad);box-shadow:0 0 6px var(--bad)}
+  .watch-host{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .watch-rate{color:var(--dim)}
+  .watch-every{color:var(--dimmer);font-size:10.5px}
+
+  /* анимация инициализации: вертикальный полосатый прогресс (порт
+     modern-verticle-progress с 21st.dev) + фаза загрузки */
+  .agent-loading{display:none;flex-direction:column;align-items:center;gap:12px;
+    padding:22px 12px 18px;margin-top:12px;border:1px dashed var(--border);border-radius:12px;
+    background:rgba(15,15,17,.55)}
+  .vprogress{position:relative;width:100%;max-width:300px;height:132px;overflow:hidden;
+    background:var(--card2);border:3px solid var(--border);border-radius:16px}
+  .vp-fill{position:absolute;left:0;right:0;bottom:0;height:0%;z-index:2;
+    background:var(--ok);transition:height .3s ease, background-color .3s;
+    box-shadow:0 0 18px rgba(52,211,153,.35)}
+  .vp-stripes{position:absolute;inset:0;
+    background:repeating-linear-gradient(45deg,
+      rgba(255,255,255,.16) 0 8px, transparent 8px 16px);
+    animation:barber .55s linear infinite}
+  @keyframes barber{to{background-position:22.63px 0}}
+  .vp-text{position:absolute;inset:0;z-index:3;display:flex;align-items:center;
+    justify-content:center;font-family:var(--mono)}
+  .vp-text b{color:#fff;font-size:34px;font-weight:700;
+    text-shadow:0 0 14px rgba(0,0,0,.7)}
+  .vp-text small{color:#fff;font-size:13px;font-weight:500;margin-left:2px;
+    text-shadow:0 0 12px rgba(0,0,0,.7)}
+  .load-phase{font:12px var(--mono);color:var(--dim);text-align:center;padding:0 10px}
+  .load-steps{display:flex;flex-direction:column;gap:4px;font:11px var(--mono);color:var(--txt)}
+  .load-steps span{display:flex;align-items:center;gap:7px;opacity:.45}
+  .load-steps i{width:13px;text-align:center;font-style:normal;font-weight:700}
+  .load-steps span.act{opacity:1}
+  .load-steps span.act i::before{content:"◆";color:var(--ok);
+    text-shadow:0 0 8px rgba(52,211,153,.6);animation:pulse 1.2s ease-in-out infinite}
+  .load-steps span.done{opacity:.85}
+  .load-steps span.done i::before{content:"✓";color:var(--ok)}
+  /* оверлей архива: переиспользует vp-прогресс */
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(2px);
+    display:flex;align-items:center;justify-content:center;z-index:60}
+  .modal-card{width:min(430px,92vw);background:var(--card);border:1px solid var(--border);border-radius:14px;
+    box-shadow:0 18px 60px rgba(0,0,0,.5);padding:20px 18px;display:flex;flex-direction:column;
+    align-items:center;gap:12px}
+  .arch-title{font-size:14.5px;font-weight:650}
+  .arch-ask{display:flex;flex-direction:column;gap:10px;align-items:center}
+  .arch-ask-text{font-size:12.5px;color:var(--dim);text-align:center;line-height:1.5}
+  .arch-ask-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+  .load-phase.err{color:var(--bad)}
+  #archExportBtn{margin-left:auto}
+  .theme-btn{flex:none;width:28px;height:28px;border-radius:50%;border:1px solid var(--border);
+    background:var(--btn);cursor:pointer;font-size:13px;line-height:1;display:flex;
+    align-items:center;justify-content:center;transition:transform .15s,border-color .15s}
+  .theme-btn:hover{transform:scale(1.12);border-color:var(--border2)}
+  .load-dots, .dots{display:flex;gap:5px}
+  .load-dots i, .dots i{width:5px;height:5px;border-radius:50%;background:var(--dim);
+    animation:dotbounce 1.1s ease-in-out infinite}
+  .load-dots i:nth-child(2), .dots i:nth-child(2){animation-delay:.15s}
+  .load-dots i:nth-child(3), .dots i:nth-child(3){animation-delay:.3s}
+  .dots{display:inline-flex;margin-right:8px;vertical-align:-1px}
+  @keyframes dotbounce{0%,70%,100%{transform:translateY(0);opacity:.45}
+    35%{transform:translateY(-4px);opacity:1}}
+  /* Agent Progress (порт starc007/agent-progress, 21st.dev #29323):
+     глиф 3×3 волной пульсирует + метка действия + живой таймер */
+  .agent-progress{display:inline-flex;align-items:center;gap:10px;
+    font:12.5px var(--mono);color:var(--dim);max-width:100%}
+  .ap-glyph{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;
+    width:17px;height:17px;flex:none;color:var(--txt2)}
+  .ap-glyph i{border-radius:1px;background:currentColor;opacity:.3;
+    animation:apcell 1.55s cubic-bezier(.77,0,.175,1) infinite;
+    animation-delay:var(--d)}
+  @keyframes apcell{0%,100%{opacity:.28;transform:scale(.72)}
+    50%{opacity:1;transform:scale(1)}}
+  .ap-label{font-family:var(--sans);font-weight:500;color:var(--txt2);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ap-time{color:var(--dimmer);font-variant-numeric:tabular-nums;flex:none}
+  .agent-steps{margin-top:7px;display:flex;flex-direction:column;gap:3px}
+  .ap-step{font:11px var(--mono);color:var(--dimmer);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ap-step.done{color:var(--dim)}
+  .ap-step.done::before{content:"✓ ";color:var(--ok)}
+  .ap-step.active::before{content:"… ";color:var(--txt2)}
+  @media(prefers-reduced-motion:reduce){
+    .ap-glyph i{animation:none;opacity:.55;transform:none}
+  }
+
+  /* логические секции карточки агента: Наблюдение / Выводы / Чат */
+  .agent-sec{border-top:1px solid var(--border);margin-top:12px;padding-top:10px}
+  .agent-sec-title{font:700 13px var(--sans);color:var(--txt2);margin-bottom:6px}
+  .agent-insights{display:block}
+  .ai-line{padding:6px 2px;border-bottom:1px solid var(--btn);font:12px var(--mono);
+    color:var(--dim);line-height:1.55}
+  .ai-line:last-child{border-bottom:none}
+  .chat-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+  .chip-q{font:500 11px var(--mono);color:var(--dim);background:var(--btn);
+    border:1px solid var(--border);border-radius:999px;padding:4px 10px;cursor:pointer;
+    transition:color .15s,border-color .15s}
+  .chip-q:hover{color:var(--txt2);border-color:var(--border2)}
+  .chat-log{display:flex;flex-direction:column;
+    gap:14px;margin-top:12px}
+  .bubble{max-width:88%;padding:8px 12px;border-radius:10px;
+    font:12.5px var(--sans);line-height:1.55;white-space:pre-wrap;word-wrap:break-word}
+  .bubble.user{align-self:flex-end;background:#22222a;color:var(--txt2);border:1px solid var(--border2)}
+  html.light .bubble.user{background:#dbe7fa;color:#23405f;border-color:#c3d6f2}
+  .bubble.bot{align-self:flex-start;background:var(--card2);color:var(--txt2);border:1px solid var(--border)}
+  .bubble.bot.think{color:var(--dimmer);font-style:italic}
+  .chat-row{display:flex;gap:8px;margin-top:10px}
+  .chat-row input{flex:1;min-width:0;background:var(--btn);border:1px solid var(--border2);
+    border-radius:8px;color:var(--txt2);font:13px var(--sans);padding:8px 12px}
+  .chat-row input:focus{outline:none;border-color:var(--border2)}
+  .chat-row input:disabled{opacity:.5}
+</style>
+<script>try{if(localStorage.getItem("stt_theme")==="light")document.documentElement.classList.add("light")}catch(e){}</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="col-main">
+
+  <!-- Шапка -->
+  <div class="card">
+    <div class="head">
+      <div class="head-ico" id="hIco"><span class="dot"></span><span class="spin"></span></div>
+      <div class="head-main">
+        <div class="head-title" id="hTitle">Мониторинг сети</div>
+        <div class="head-sub">SpeedTestTray · <b>Cloudflare</b> · каждые <span id="hInterval">10</span> мин</div>
+      </div>
+      <div class="head-right">
+        <div class="speed-big"><span id="sNow">0.0</span><small>↓ Мбит/с</small></div>
+        <div class="speed-sub"><span class="up">↑ <span id="sUp">0.0</span></span> · сегодня ↓<span id="sDay">0 Б</span></div>
+        <div class="head-actions"><button class="btn" id="runBtn">▶ Проверить сейчас</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Трафик: сразу под шапкой с текущей скоростью -->
+  <div class="card traf">
+    <div>Сегодня: ↓ <b id="tDayD">—</b> · ↑ <b id="tDayU">—</b></div>
+    <div>За месяц: ↓ <b id="tMonD">—</b> · ↑ <b id="tMonU">—</b></div>
+  </div>
+
+  <!-- Последняя проверка -->
+  <div class="chip" id="lastChip"></div>
+
+  <!-- График -->
+  <div class="card">
+    <div class="chart-head">
+      <span class="chart-label">Скорость за сессию</span>
+      <div class="probe" id="probe">
+        <div class="p-row"><span class="pen">✎</span><span id="probeTxt">проверка…</span></div>
+        <div class="pbar"><i id="probeBar"></i></div>
+      </div>
+      <span class="chart-peak">пик <i id="peak">0</i> Мбит/с</span>
+    </div>
+    <div class="chart-box">
+      <canvas id="chart"></canvas>
+      <div class="chart-empty" id="chartEmpty">Жду данных…</div>
+    </div>
+    <div class="chart-foot">
+      <span id="fPoints">точек 0</span>
+      <span id="fWindow">окно 0 мин</span>
+      <span id="fBad"></span>
+      <span class="net-rate">обновление
+        <select id="netRate" title="Как часто обновлять график">
+          <option value="1000">1 с</option>
+          <option value="2000">2 с</option>
+          <option value="5000">5 с</option>
+          <option value="10000">10 с</option>
+        </select>
+      </span>
+      <button class="foot-btn" id="procBtn" type="button"
+        title="Процессы и их сетевые соединения">кто потребляет интернет</button>
+    </div>
+  </div>
+
+  <!-- Кто потребляет интернет: процессы и их соединения -->
+  <div class="card proc-card" id="procCard" style="display:none">
+    <div class="proc-head">
+      <span class="proc-title">Кто потребляет интернет</span>
+      <div class="proc-tabs">
+        <button class="ptab on" type="button" data-tab="procs">Процессы</button>
+        <button class="ptab" type="button" data-tab="conns">Соединения</button>
+      </div>
+      <span class="proc-hint" id="procHint"></span>
+      <button class="foot-btn" id="procClose" type="button" title="Скрыть панель">✕</button>
+    </div>
+    <div class="proc-body" id="procBody">
+      <div class="proc-empty">снимаю данные…</div>
+    </div>
+    <div class="proc-note">активность ≈ — счётчики ввода-вывода процесса (диск + сеть);
+      точный сетевой счётчик в Windows требует прав администратора.
+      Имена хостов определяются в течение пары секунд, локальные адреса не разрешаются.</div>
+  </div>
+
+  <!-- Аналитика измерений: фильтры + три блока в одной карточке -->
+  <div class="card an">
+    <div class="an-head">
+      <span class="an-title">Аналитика измерений</span>
+      <span class="an-hint">фильтры применяются ко всем трём блокам ниже</span>
+      <button class="reset-btn" type="button" id="resetAll" title="Сбросить все фильтры">✕ сбросить всё</button>
+    </div>
+
+    <div class="filters">
+      <label>Локация <select id="fLoc"></select></label>
+      <label>Время суток
+        <select id="fTod">
+          <option value="all">любое</option>
+          <option value="0">00–06 · ночь</option>
+          <option value="1">06–12 · утро</option>
+          <option value="2">12–18 · день</option>
+          <option value="3">18–24 · вечер</option>
+        </select>
+      </label>
+      <label>Период
+        <select id="fPeriod">
+          <option value="all">всё время</option>
+          <option value="1">последние сутки</option>
+          <option value="7">7 дней</option>
+          <option value="30">30 дней</option>
+        </select>
+      </label>
+      <span class="f-count" id="fCount"></span>
+    </div>
+
+    <div class="an-sec">
+      <div class="an-sec-head">
+        <span class="an-sec-title">Рейтинг локаций</span>
+        <span class="an-sec-sub">куда подключаться: средняя ↓ по каждой локации</span>
+        <button class="reset-btn" type="button" data-reset="loc" title="Показать все локации">✕ сбросить локацию</button>
+      </div>
+      <div id="rating"></div>
+    </div>
+
+    <div class="an-sec">
+      <div class="an-sec-head">
+        <span class="an-sec-title">Скорость по часам суток</span>
+        <span class="an-sec-sub" id="hoursSub">сегодня</span>
+        <button class="reset-btn" type="button" data-reset="tod" title="Показать все часы">✕ сбросить время</button>
+        <div class="hours-nav">
+          <button class="foot-btn" type="button" id="hoursPrev" title="День назад">←</button>
+          <button class="foot-btn hours-date" type="button" id="hoursDate" title="Выбрать день">—</button>
+          <button class="foot-btn" type="button" id="hoursNext" title="День вперёд">→</button>
+          <div class="cal" id="hoursCal">
+            <div class="cal-head">
+              <button class="foot-btn" type="button" id="calPrev" title="Месяц назад">‹</button>
+              <span class="cal-title" id="calTitle"></span>
+              <button class="foot-btn" type="button" id="calNext" title="Месяц вперёд">›</button>
+            </div>
+            <div class="cal-grid" id="calGrid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="clock-box">
+        <canvas id="hoursChart"></canvas>
+        <div class="clock-tip" id="hourTip"></div>
+      </div>
+      <div class="clock-stats" id="clockStats"></div>
+    </div>
+
+    <div class="an-sec">
+      <div class="an-sec-head">
+        <span class="an-sec-title">История проверок</span>
+        <button class="foot-btn" type="button" id="archExportBtn" title="Сохранить историю замеров и трафик в архивный файл">⬇ архив</button>
+        <button class="foot-btn" type="button" id="archImportBtn" title="Загрузить данные из архивного файла">⬆ импорт</button>
+        <button class="reset-btn" type="button" id="clearHist" title="Удалить все сохранённые измерения">🗑 Очистить</button>
+      </div>
+      <input type="file" id="archFile" accept=".jsonl,.json" style="display:none">
+      <div class="hist" id="hist"></div>
+    </div>
+  </div>
+
+  <div class="conn-lost" id="connLost">✗ нет связи с приложением — SpeedTestTray запущен?</div>
+
+  <div class="modal-back" id="archOverlay" style="display:none">
+    <div class="modal-card">
+      <div class="arch-title" id="archTitle">Архив данных</div>
+      <div class="vprogress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="vp-fill"><div class="vp-stripes"></div></div>
+        <div class="vp-text"><b>0</b><small>%</small></div>
+      </div>
+      <div class="load-phase" id="archPhase">…</div>
+      <div class="load-steps" id="archSteps"></div>
+      <div class="arch-ask" id="archAsk" style="display:none">
+        <div class="arch-ask-text" id="archAskText"></div>
+        <div class="arch-ask-btns">
+          <button class="btn" id="archOverwrite" type="button">Перезаписать</button>
+          <button class="btn" id="archSkip" type="button">Пропустить пересечения</button>
+          <button class="foot-btn" id="archCancel" type="button">отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /col-main -->
+
+  <!-- ИИ-агент: правая колонка, отдельный чат с орбом -->
+  <aside class="col-agent" id="colAgent">
+    <div class="card agent-card" id="agentCard">
+      <div class="agent-head">
+        <button class="orb-btn off" id="orbBtn" type="button"
+          title="ИИ-агент сети: нажмите, чтобы инициализировать">
+          <canvas id="orbCanvas"></canvas>
+        </button>
+        <div class="agent-main">
+          <div class="agent-title">ИИ-агент сети</div>
+          <div class="agent-status" id="agentStatus">не запущен — нажмите «Инициализировать»</div>
+        </div>
+        <button class="theme-btn" id="themeBtn" type="button" title="Переключить тему">☀️</button>
+      </div>
+      <div class="agent-btnrow">
+        <button class="btn" id="agentInitBtn" type="button">Инициализировать</button>
+        <button class="foot-btn" id="agentStopBtn" type="button" style="display:none">выключить</button>
+      </div>
+      <div class="watch" id="watchBox" style="display:none"></div>
+      <div class="agent-loading" id="agentLoading" style="display:none">
+        <div class="vprogress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="vp-fill" id="vpFill"><div class="vp-stripes"></div></div>
+          <div class="vp-text"><b id="vpPct">0</b><small>%</small></div>
+        </div>
+        <div class="load-phase" id="agentPhase">запускаюсь…</div>
+        <div class="load-steps" id="loadSteps">
+          <span data-ls="0"><i></i>сервер llama.cpp</span>
+          <span data-ls="1"><i></i>модель с HuggingFace</span>
+          <span data-ls="2"><i></i>запуск модели</span>
+        </div>
+        <div class="agent-progress">
+          <span class="ap-glyph" data-ap-glyph></span>
+          <span class="ap-label" id="loadLabel">запускаюсь</span>
+          <span class="ap-time" id="loadTime">0.0 с</span>
+        </div>
+      </div>
+      <div class="agent-sec" id="agentInsightsSec" style="display:none">
+        <div class="agent-sec-title" id="agentInsightsTitle">Выводы</div>
+        <div class="agent-insights" id="agentInsights"></div>
+      </div>
+      <div class="agent-sec" id="agentChatSec" style="display:none">
+        <div class="agent-sec-title">Чат с агентом</div>
+        <div class="agent-chat" id="agentChat">
+        <div class="chat-chips">
+          <button class="chip-q" type="button" data-q="Сделай замер скорости и скажи результат">сделать замер</button>
+          <button class="chip-q" type="button" data-q="Когда лучше качать большие файлы?">лучшее время</button>
+          <button class="chip-q" type="button" data-q="Какой трафик за месяц?">трафик</button>
+        </div>
+        <div class="chat-log" id="chatLog"></div>
+        <div class="chat-row">
+          <input id="chatInput" type="text" autocomplete="off"
+            placeholder="Спросите или попросите: «сделай замер»…">
+          <button class="btn" id="chatSend" type="button">Отправить</button>
+        </div>
+      </div>
+      </div><!-- /agentChatSec -->
+    </div>
+  </aside>
+</div>
+
+<!-- подтверждение очистки истории -->
+<div class="modal" id="confirmModal">
+  <div class="modal-card">
+    <div class="m-title">Очистить историю измерений?</div>
+    <div class="m-text">Будут удалены все <b id="mCount">…</b> сохранённые измерения —
+      вместе с рейтингом локаций и статистикой по часам суток.
+      Действие <b>нельзя отменить</b>.</div>
+    <div class="m-actions">
+      <button class="btn" id="mCancel" type="button">Отмена</button>
+      <button class="btn danger" id="mOk" type="button">🗑 Очистить</button>
+    </div>
+  </div>
+</div>
+
+<script src="/orb.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+let st = null;          // последний /api/state
+let pollTimer = null;
+
+const fmtBytes = b => {
+  if (b >= 2**40) return (b/2**40).toFixed(2)+" ТБ";
+  if (b >= 2**30) return (b/2**30).toFixed(2)+" ГБ";
+  if (b >= 2**20) return (b/2**20).toFixed(1)+" МБ";
+  if (b >= 2**10) return (b/2**10).toFixed(1)+" КБ";
+  return b+" Б";
+};
+const hhmm = t => { const d=new Date(t); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
+const hhmmss = t => { const d=new Date(t); return hhmm(t)+":"+String(d.getSeconds()).padStart(2,"0"); };
+const dmy  = t => { const d=new Date(t); return d.getDate()+" "+["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"][d.getMonth()]; };
+const phaseRU = p => ({meta:"соединение",ping:"пинг",download:"загрузка",upload:"отдача",loss:"потери"}[p]||p);
+const zoneOf = v => v >= st.goodMbps ? "ok" : (v >= st.badMbps ? "warn" : "bad");
+const zoneColor = z => ({ok:"var(--ok)",warn:"var(--warn)",bad:"var(--bad)"})[z];
+// цвет из CSS-переменной (тема) с фолбэком — для canvas, где var() не работает
+const tc = (name, fallback) =>
+  (getComputedStyle(document.documentElement).getPropertyValue(name) || "").trim() || fallback;
+
+/* ── фильтры и аналитика по локациям ────────────────────────── */
+const flt = Object.assign({loc:"all", tod:"all", period:"all"},
+  JSON.parse(localStorage.getItem("stt_flt") || "{}"));
+const saveFlt = () => localStorage.setItem("stt_flt", JSON.stringify(flt));
+const locOf = e => e.server || "—";
+
+function filteredHistory(){
+  const h = (st && st.history) || [];
+  const cutoff = flt.period === "all" ? 0 : Date.now() - Number(flt.period)*864e5;
+  return h.filter(e => {
+    const t = Date.parse(e.ts);
+    if (t < cutoff) return false;
+    if (flt.tod !== "all"){
+      const hr = new Date(t).getHours();
+      if (String(hr < 6 ? 0 : hr < 12 ? 1 : hr < 18 ? 2 : 3) !== flt.tod) return false;
+    }
+    return flt.loc === "all" || locOf(e) === flt.loc;
+  });
+}
+
+let lastHistLen = -1;
+function renderFilters(){
+  const h = (st && st.history) || [];
+  if (h.length !== lastHistLen){ // список локаций перестраиваем только при новых записях
+    lastHistLen = h.length;
+    const counts = new Map();
+    for (const e of h) counts.set(locOf(e), (counts.get(locOf(e)) || 0) + 1);
+    $("fLoc").innerHTML = '<option value="all">все</option>' +
+      [...counts.entries()].sort((a,b) => b[1]-a[1])
+        .map(([k,n]) => '<option value="'+esc(k)+'"'+(k===flt.loc?" selected":"")+'>'+esc(k)+' ('+n+')</option>')
+        .join("");
+    if (flt.loc !== "all" && !counts.has(flt.loc)) flt.loc = "all";
+  } else {
+    $("fLoc").value = flt.loc;
+  }
+  $("fTod").value = flt.tod;
+  $("fPeriod").value = flt.period;
+  $("fCount").textContent = "в выборке: " + filteredHistory().length + " из " + h.length;
+  // кнопки независимы: каждая видима только при «своём» активном фильтре
+  const active = flt.loc !== "all" || flt.tod !== "all" || flt.period !== "all";
+  const bAll = $("resetAll");
+  if (bAll) bAll.classList.toggle("show", active);
+  const bLoc = document.querySelector('[data-reset="loc"]');
+  const bTod = document.querySelector('[data-reset="tod"]');
+  if (bLoc) bLoc.classList.toggle("show", flt.loc !== "all");
+  if (bTod) bTod.classList.toggle("show", flt.tod !== "all");
+  const bClear = $("clearHist");
+  if (bClear) bClear.classList.toggle("show", h.length > 0);
+}
+
+function renderRating(){
+  const box = $("rating");
+  const rows = filteredHistory().filter(e => !e.err);
+  if (!rows.length){
+    box.innerHTML = '<div class="empty">Нет успешных проверок в выборке.</div>';
+    return;
+  }
+  const by = new Map();
+  for (const e of rows){
+    const k = locOf(e);
+    let r = by.get(k);
+    if (!r){ r = {n:0, sum:0, best:0, psum:0, colo:"", nets:new Set()}; by.set(k, r); }
+    r.n++; r.sum += e.down; r.best = Math.max(r.best, e.down); r.psum += e.ping;
+    if (e.colo) r.colo = r.colo || e.colo;
+    if (e.net) r.nets.add(e.net);
+  }
+  const arr = [...by.entries()]
+    .map(([loc,r]) => ({loc, ...r, avg:r.sum/r.n, aping:r.psum/r.n}))
+    .sort((a,b) => b.avg - a.avg);
+  let html = "";
+  for (const r of arr){
+    const z = zoneOf(r.avg);
+    const tip = "локация: "+r.loc+(r.colo?" ("+r.colo+")":"")+"\n"+
+      "проверок: "+r.n+" · средняя ↓ "+r.avg.toFixed(1)+" · лучшая ↓ "+r.best.toFixed(1)+" Мбит/с\n"+
+      "средний пинг: "+Math.round(r.aping)+" мс"+
+      (r.nets.size ? "\nсети: "+[...r.nets].join(", ") : "")+
+      "\nклик — показать в истории только эту локацию";
+    html += '<div class="rt-row'+(r.loc===flt.loc?" active":"")+'" data-loc="'+esc(r.loc)+'" title="'+esc(tip)+'">'+
+      '<span class="rt-name">'+esc(r.loc)+(r.colo?'<span class="colo">'+esc(r.colo)+'</span>':"")+'</span>'+
+      '<span class="rt-n">×'+r.n+'</span>'+
+      '<span class="rt-avg '+z+'">↓ '+r.avg.toFixed(1)+'</span>'+
+      '<span class="rt-best">макс '+r.best.toFixed(1)+'</span>'+
+      '<span class="rt-ping">'+Math.round(r.aping)+' мс</span></div>';
+  }
+  box.innerHTML = html;
+  box.querySelectorAll(".rt-row").forEach(el =>
+    el.addEventListener("click", () => {
+      flt.loc = flt.loc === el.dataset.loc ? "all" : el.dataset.loc;
+      saveFlt(); renderDyn();
+    }));
+}
+
+/* ── график «скорость по часам суток»: X — час 0..24, Y — Мбит/с ── */
+let hoursAvg = Array(24).fill(0), hoursCnt = Array(24).fill(0), hourLayout = null;
+let hoursOff = 0; // 0 — сегодня, -1 — вчера, … (день, выбранный стрелками/календарём)
+
+function dayFromOff(){
+  const d = new Date(); d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + hoursOff);
+  return d;
+}
+
+function renderHours(){
+  if (!st) return; // первый тик ещё не пришёл
+  const dayStr = dayFromOff().toDateString();
+  const rows = filteredHistory().filter(e =>
+    !e.err && new Date(Date.parse(e.ts)).toDateString() === dayStr);
+  const sum = Array(24).fill(0); hoursCnt = Array(24).fill(0);
+  for (const e of rows){
+    const hh = new Date(Date.parse(e.ts)).getHours();
+    sum[hh] += e.down; hoursCnt[hh]++;
+  }
+  hoursAvg = sum.map((s,i) => hoursCnt[i] ? s/hoursCnt[i] : 0);
+  drawHours();
+
+  // мини-цифры: лучший/худший час и средняя
+  const filled = hoursAvg.map((a,i) => ({a, i})).filter(x => x.a > 0);
+  const stats = $("clockStats");
+  if (!filled.length){
+    const day = dayFromOff();
+    stats.innerHTML = '<span>нет данных за '+(hoursOff===0 ? "сегодня" : hoursOff===-1 ? "вчера" : dmy(day.getTime()))+'</span>';
+    return;
+  }
+  const best = filled.reduce((m,x) => x.a > m.a ? x : m);
+  const worst = filled.reduce((m,x) => x.a < m.a ? x : m);
+  const mid = filled.reduce((s,x) => s + x.a, 0) / filled.length;
+  const hh2 = i => String(i).padStart(2,"0") + ":00";
+  stats.innerHTML =
+    '<span>лучший час <b class="ok">'+hh2(best.i)+'</b> · ↓ <b class="ok">'+best.a.toFixed(1)+'</b></span>'+
+    '<span>худший <b>'+hh2(worst.i)+'</b> · ↓ <b>'+worst.a.toFixed(1)+'</b></span>'+
+    '<span>средняя ↓ <b>'+mid.toFixed(1)+'</b> Мбит/с</span>';
+}
+
+function drawHours(){
+  const c = $("hoursChart");
+  const dpr = window.devicePixelRatio || 1;
+  const W = c.parentElement.clientWidth, H = 230;
+  c.width = Math.round(W*dpr); c.height = Math.round(H*dpr);
+  c.style.height = H + "px";
+  const ctx = c.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const padL = 40, padR = 12, padT = 14, padB = 26;
+  const iw = W-padL-padR, ih = H-padT-padB;
+  const mono = "ui-monospace, Consolas, monospace";
+
+  let maxA = 10;
+  for (const a of hoursAvg) if (a > maxA) maxA = a;
+  if (st.badMbps) maxA = Math.max(maxA, st.badMbps*1.08);
+  maxA *= 1.15;
+  const pow = Math.pow(10, Math.floor(Math.log10(maxA)));
+  for (const m of [1,1.2,1.5,2,2.5,3,4,5,6,8,10]) if (m*pow >= maxA){ maxA = m*pow; break; }
+
+  const X = h => padL + (h+0.5)/24*iw;      // центр часовой колонки
+  const Y = v => padT + ih - v/maxA*ih;
+
+  // подсветка текущего часа — только на дне «сегодня»
+  if (hoursOff === 0){
+    const nowH = new Date().getHours();
+    ctx.fillStyle = tc("--c-fill", "rgba(255,255,255,.04)");
+    ctx.fillRect(padL + nowH/24*iw, padT, iw/24, ih);
+  }
+
+  // сетка: вертикали по часам (каждый 3-й — с подписью), горизонтали со значениями
+  ctx.font = "10px " + mono;
+  for (let h=0; h<=24; h++){
+    const x = padL + h/24*iw;
+    ctx.strokeStyle = h%3 === 0 ? tc("--c-grid2", "#1f1f24") : tc("--c-grid", "var(--card2)");
+    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT+ih); ctx.stroke();
+    if (h%3 === 0 && h < 24){
+      ctx.fillStyle = tc("--c-label", "#67676d"); ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+      ctx.fillText(String(h).padStart(2,"0"), X(h), H-8);
+    }
+  }
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let i=0; i<=4; i++){
+    const v = maxA*i/4, y = Y(v);
+    ctx.strokeStyle = tc("--c-axis", "var(--card2)"); ctx.beginPath();
+    ctx.moveTo(padL, y); ctx.lineTo(W-padR, y); ctx.stroke();
+    ctx.fillStyle = tc("--c-label", "#67676d");
+    const r = Math.round(v*10)/10;
+    ctx.fillText(r%1 === 0 ? String(r) : r.toFixed(1), padL-6, y);
+  }
+
+  // порог «плохо»
+  if (st.badMbps && st.badMbps < maxA){
+    ctx.save(); ctx.setLineDash([4,4]); ctx.strokeStyle = "rgba(248,113,113,.5)";
+    ctx.beginPath(); ctx.moveTo(padL, Y(st.badMbps)); ctx.lineTo(W-padR, Y(st.badMbps)); ctx.stroke();
+    ctx.restore();
+  }
+
+  // линия средних по часам (разрыв на часах без данных)
+  ctx.save();
+  ctx.strokeStyle = tc("--c-line", "#fff"); ctx.lineWidth = 1.8; ctx.lineJoin = "round";
+  ctx.shadowColor = tc("--c-line", "#fff"); ctx.shadowBlur = 8;
+  ctx.beginPath();
+  let pen = false;
+  for (let h=0; h<24; h++){
+    if (!hoursCnt[h]){ pen = false; continue; }
+    const x = X(h), y = Y(hoursAvg[h]);
+    if (pen) ctx.lineTo(x,y); else { ctx.moveTo(x,y); pen = true; }
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // точки-часы, цвет — зона
+  for (let h=0; h<24; h++){
+    if (!hoursCnt[h]) continue;
+    const v = hoursAvg[h];
+    const col = v >= st.goodMbps ? tc("--ok", "#34d399") : v >= st.badMbps ? tc("--warn", "#fbbf24") : tc("--bad", "#f87171");
+    ctx.save();
+    ctx.shadowColor = col; ctx.shadowBlur = 7;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(X(h), Y(v), 3.2, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  if (!hoursAvg.some(a => a > 0)){
+    // пустой день: рамка графика на месте, надпись — крупная и полупрозрачная,
+    // чтобы читалась в обеих темах, но не бросалась в глаза
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = tc("--c-label", "#8a8a94");
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = "700 20px " + mono;
+    ctx.fillText("нет данных", padL+iw/2, padT+ih/2);
+    ctx.restore();
+  }
+
+  hourLayout = {padL, iw};
+}
+
+// подсказка при наведении: ближайший час по X
+$("hoursChart").addEventListener("mousemove", e => {
+  const tip = $("hourTip");
+  if (!hourLayout){ tip.style.display = "none"; return; }
+  const rect = e.target.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  if (x < hourLayout.padL-6 || x > hourLayout.padL+hourLayout.iw+6){
+    tip.style.display = "none"; return;
+  }
+  const h = Math.max(0, Math.min(23, Math.floor((x-hourLayout.padL)/hourLayout.iw*24)));
+  tip.textContent = hoursCnt[h]
+    ? String(h).padStart(2,"0")+":00 · ↓ "+hoursAvg[h].toFixed(1)+" Мбит/с · проверок: "+hoursCnt[h]
+    : String(h).padStart(2,"0")+":00 · нет данных";
+  tip.style.display = "block";
+  tip.style.left = Math.max(4, Math.min(x + 12, rect.width - 180)) + "px";
+  tip.style.top = Math.max(4, y - 34) + "px";
+});
+$("hoursChart").addEventListener("mouseleave", () => { $("hourTip").style.display = "none"; });
+
+/* ── навигация по дням: ← → и календарь ───────────────────────── */
+const hoursIso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+function syncHoursUI(){
+  const day = dayFromOff();
+  $("hoursDate").textContent = dmy(day.getTime()) +
+    (day.getFullYear() !== new Date().getFullYear() ? " " + day.getFullYear() : "");
+  $("hoursNext").disabled = hoursOff >= 0;
+  $("hoursSub").textContent = hoursOff === 0 ? "сегодня" : hoursOff === -1 ? "вчера" : dmy(day.getTime());
+  renderHours();
+}
+$("hoursPrev").addEventListener("click", () => { hoursOff--; syncHoursUI(); });
+$("hoursNext").addEventListener("click", () => { if (hoursOff < 0){ hoursOff++; syncHoursUI(); } });
+$("hoursDate").addEventListener("click", () => {
+  if ($("hoursCal").classList.contains("open")) calClose(); else calOpen();
+});
+
+/* календарь: дни с замерами отмечены точкой (из истории, дата — локальная) */
+const CAL_MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь",
+  "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+let calY = 0, calM = 0;
+function calOpen(){
+  const d = dayFromOff();
+  calY = d.getFullYear(); calM = d.getMonth();
+  $("hoursCal").classList.add("open");
+  buildCal();
+}
+function calClose(){ $("hoursCal").classList.remove("open"); }
+function buildCal(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const sel = dayFromOff();
+  const has = new Set((st && st.history || []).filter(e => !e.err).map(e => e.ts.slice(0,10)));
+  const start = (new Date(calY, calM, 1).getDay() + 6) % 7; // 0 = Пн
+  const dim = new Date(calY, calM+1, 0).getDate();
+  const cells = [];
+  for (let i = start - 1; i >= 0; i--) cells.push({d: new Date(calY, calM, -i), out: true});
+  for (let d = 1; d <= dim; d++) cells.push({d: new Date(calY, calM, d)});
+  while (cells.length % 7){
+    const last = cells[cells.length-1].d;
+    cells.push({d: new Date(last.getTime() + 86400000), out: true});
+  }
+  $("calTitle").textContent = CAL_MONTHS[calM] + " " + calY;
+  let html = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map(w => '<span class="wd">'+w+'</span>').join("");
+  for (const c of cells){
+    const d = c.d, iso = hoursIso(d);
+    const cls = ["cal-day"];
+    if (c.out) cls.push("out");
+    if (d > today) cls.push("fut");
+    if (d.toDateString() === today.toDateString()) cls.push("today");
+    if (d.toDateString() === sel.toDateString()) cls.push("sel");
+    const hasData = has.has(iso);
+    if (hasData) cls.push("has");
+    html += '<button type="button" class="'+cls.join(" ")+'" data-d="'+iso+'"'+
+      (d > today ? " disabled" : "")+(hasData ? ' title="есть замеры"' : "")+'>'+d.getDate()+'</button>';
+  }
+  $("calGrid").innerHTML = html;
+  $("calGrid").querySelectorAll("button:not([disabled])").forEach(b =>
+    b.addEventListener("click", () => {
+      const [y,m,dd] = b.dataset.d.split("-").map(Number);
+      const today = new Date(); today.setHours(0,0,0,0);
+      hoursOff = Math.max(-3650, Math.min(0, Math.round((new Date(y, m-1, dd) - today) / 86400000)));
+      syncHoursUI();
+      calClose();
+    }));
+}
+$("calPrev").addEventListener("click", () => { calM--; if (calM < 0){ calM = 11; calY--; } buildCal(); });
+$("calNext").addEventListener("click", () => { calM++; if (calM > 11){ calM = 0; calY++; } buildCal(); });
+document.addEventListener("click", e => { if (!e.target.closest(".hours-nav")) calClose(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") calClose(); });
+syncHoursUI();
+
+function renderDyn(){ renderFilters(); renderRating(); renderHours(); renderHist(); }
+
+/* ── блок «Наблюдение»: фоновые пинги хостов (заводятся через агента) ── */
+function renderWatch(list){
+  const box = $("watchBox");
+  if (!list || !list.length){
+    box.style.display = "none";
+    box.innerHTML = "";
+    return;
+  }
+  box.style.display = "";
+  box.innerHTML = '<div class="watch-title">Наблюдение за хостами</div>' + list.map(j => {
+    const ok = j.lastMs >= 0 && j.failStreak === 0;
+    const rate = j.total ? Math.round((j.total - j.fails) * 100 / j.total) : 100;
+    const since = j.since ? hhmm(Date.parse(j.since)) : "";
+    return '<div class="watch-row">' +
+      '<span class="watch-dot ' + (ok ? "ok" : "bad") + '"></span>' +
+      '<span class="watch-host" title="следим с ' + since +
+        (j.failStreak > 0 ? ' · подряд без ответа: ' + j.failStreak : "") + '">' + esc(j.host) + '</span>' +
+      '<span class="watch-ms">' + (j.lastMs >= 0 ? j.lastMs + " мс" : "нет ответа") + '</span>' +
+      '<span class="watch-rate">' + rate + '%</span>' +
+      '<span class="watch-every">каждые ' + j.intervalMin + ' мин</span>' +
+      '</div>';
+  }).join("");
+}
+
+/* ── шапка и чип ─────────────────────────────────────────────── */
+function renderHead(){
+  $("hInterval").textContent = st.intervalMin;
+  $("sNow").textContent = st.net.downMbps.toFixed(1);
+  $("sUp").textContent  = st.net.upMbps.toFixed(1);
+  $("sDay").textContent = fmtBytes(st.net.dayDown);
+  $("tDayD").textContent = fmtBytes(st.net.dayDown);
+  $("tDayU").textContent = fmtBytes(st.net.dayUp);
+  $("tMonD").textContent = fmtBytes(st.net.monDown);
+  $("tMonU").textContent = fmtBytes(st.net.monUp);
+
+  const ico = $("hIco"), title = $("hTitle"), btn = $("runBtn");
+  if (st.checking){
+    ico.classList.add("busy");
+    title.textContent = "Идёт проверка · " + phaseRU(st.phase) +
+      (st.frac > 0 ? " " + Math.round(st.frac*100) + "%" : "");
+    btn.disabled = true; btn.textContent = "⏳ Идёт проверка…";
+  } else {
+    ico.classList.remove("busy");
+    title.textContent = "Мониторинг сети";
+    btn.disabled = false; btn.textContent = "▶ Проверить сейчас";
+  }
+
+  // панель поверх графика
+  const probe = $("probe");
+  if (st.checking){
+    probe.classList.add("show");
+    $("probeTxt").textContent = "Проверка · " + phaseRU(st.phase) +
+      (st.frac > 0 ? " " + Math.round(st.frac*100) + "%" : "");
+    $("probeBar").style.width = Math.round((st.frac||0)*100) + "%";
+  } else probe.classList.remove("show");
+
+  // чип последней проверки
+  const chip = $("lastChip");
+  const last = st.history && st.history[st.history.length-1];
+  if (!last){ chip.className = "chip"; return; }
+  const err = !!last.err;
+  const z = zoneOf(last.down);
+  chip.className = "chip show " + (err ? "bad" : z);
+  const mark = err ? "✗" : "✓";
+  if (err){
+    chip.innerHTML = '<span class="mark">✗</span><span class="v">'+hhmm(Date.parse(last.ts))+
+      ' — проверка не удалась: '+esc(shortErr(last))+'</span>';
+  } else {
+    chip.innerHTML = '<span class="mark" style="color:'+zoneColor(z)+'">✓</span>'+
+      '<span class="v">последняя проверка '+hhmmss(Date.parse(last.ts))+'</span>'+
+      '<span class="v">'+esc(last.server||"—")+(last.net ? ' · '+esc(last.net.slice(0,28)) : '')+'</span>'+
+      '<span class="v">↓ '+last.down.toFixed(1)+' ↑ '+last.up.toFixed(1)+' Мбит/с</span>'+
+      '<span class="v">пинг '+Math.round(last.ping)+' мс · джиттер '+Math.round(last.jitter)+' мс</span>'+
+      (last.loss>0 ? '<span class="v">потери '+last.loss.toFixed(1)+'%</span>' : '');
+  }
+}
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ── история: строки-штрихкоды ──────────────────────────────── */
+/* история раскрывается страницами по 10; сброс — при смене фильтров */
+const HIST_PAGE = 10;
+let histShown = HIST_PAGE, histSig = "";
+
+// shortErr — короткая человеческая формулировка ошибки вместо
+// технического подробностей (Go-строка с URL и стеком); полный текст
+// остаётся в подсказке при наведении
+function shortErr(e){
+  const s = (e.err || "").toLowerCase();
+  const conn = s.includes("нет соединения") || s.includes("dial ") ||
+    s.includes("get \"http") || s.includes("timeout") ||
+    s.includes("deadline") || s.includes("connection refused") ||
+    s.includes("no such host");
+  return conn ? "ошибка соединения" : (e.err || "").slice(0, 60);
+}
+
+function renderHist(){
+  const box = $("hist");
+  const total = (st.history||[]).length;
+  if (!total){
+    histShown = HIST_PAGE;
+    box.innerHTML = '<div class="empty-big">'+
+      '<span class="e-ico">📭</span>'+
+      '<span class="e-t">Измерений пока нет</span>'+
+      '<span class="e-s">первая проверка займёт ~10–15 секунд</span>'+
+      '<button class="btn" id="emptyRun" type="button">▶ Сделать измерение</button></div>';
+    $("emptyRun").addEventListener("click", () => $("runBtn").click());
+    return;
+  }
+  const h = filteredHistory().slice().reverse(); // новые сверху
+  const sig = flt.loc+"|"+flt.tod+"|"+flt.period;
+  if (sig !== histSig){ histSig = sig; histShown = HIST_PAGE; }
+  if (!h.length){
+    box.innerHTML = '<div class="empty">По выбранным фильтрам ничего не найдено.</div>';
+    return;
+  }
+  const shown = h.slice(0, histShown);
+  const maxD = Math.max(10, ...h.map(e => e.err ? 0 : e.down));
+  const TICKS = 24;
+  let html = "";
+  for (const e of shown){
+    const t = Date.parse(e.ts);
+    const sameDay = new Date(t).toDateString() === new Date().toDateString();
+    const locTip = "сервер: "+locOf(e)+(e.colo?" ("+e.colo+")":"")+(e.net?" · сеть: "+e.net:"");
+    const loc = '<span class="r-loc" title="'+esc(locTip)+'">'+esc(locOf(e))+'</span>';
+    if (e.err){
+      html += '<div class="row" title="'+esc(e.err)+'">'+
+        '<span class="r-time">'+hhmmss(t)+'</span>'+
+        (sameDay ? "" : '<span class="r-date">'+dmy(t)+'</span>')+
+        loc+
+        '<span class="r-err">✗ '+esc(shortErr(e))+'</span></div>';
+      continue;
+    }
+    const z = zoneOf(e.down);
+    const fill = Math.max(1, Math.round(e.down/maxD*TICKS));
+    let bar = "";
+    for (let i=0;i<TICKS;i++)
+      bar += '<i class="'+(i<fill?("f "+z):"")+(i===fill-1&&fill<TICKS?" half":"")+'"></i>';
+    const tip = locOf(e)+(e.colo?" ("+e.colo+")":"")+(e.net?" · "+e.net:"")+"\n"+
+      "↓ "+e.down.toFixed(1)+" ↑ "+e.up.toFixed(1)+" Мбит/с, "+
+      "пинг "+e.ping.toFixed(1)+" мс, джиттер "+e.jitter.toFixed(1)+" мс, "+
+      "потери "+e.loss.toFixed(1)+"%"+
+      (e.dur_ms>0?", "+(e.dur_ms/1000).toFixed(0)+" с":"")+
+      (e.trunc?" (тест обрезан)":"");
+    html += '<div class="row" title="'+esc(tip)+'">'+
+      '<span class="r-time">'+hhmmss(t)+'</span>'+
+      (sameDay ? "" : '<span class="r-date">'+dmy(t)+'</span>')+
+      loc+
+      '<div class="r-bar">'+bar+'</div>'+
+      '<span class="r-val '+z+'">↓ '+e.down.toFixed(1)+'</span>'+
+      '<span class="r-up">↑ '+e.up.toFixed(1)+'</span>'+
+      '<span class="r-extra">'+(e.dur_ms>0?(e.dur_ms/1000).toFixed(0)+" с":"")+'</span></div>';
+  }
+  // пейджинг: «показать ещё по 10», «свернуть» — если список раскрыт
+  const nav = [];
+  const rest = h.length - shown.length;
+  if (rest > 0){
+    nav.push('<button class="foot-btn" id="histMore" type="button" title="Раскрыть следующие '+Math.min(HIST_PAGE,rest)+'">показать ещё '+Math.min(HIST_PAGE,rest)+' из '+rest+'</button>');
+  }
+  if (histShown > HIST_PAGE){
+    nav.push('<button class="foot-btn" id="histLess" type="button">свернуть</button>');
+  }
+  if (nav.length) html += '<div class="hist-nav">'+nav.join("")+'</div>';
+  box.innerHTML = html;
+  const more = $("histMore");
+  if (more) more.addEventListener("click", () => { histShown += HIST_PAGE; renderHist(); });
+  const less = $("histLess");
+  if (less) less.addEventListener("click", () => { histShown = HIST_PAGE; renderHist(); });
+}
+
+/* ── график ──────────────────────────────────────────────────── */
+let dotPat = null;
+function pattern(ctx){
+  if (dotPat) return dotPat;
+  const p = document.createElement("canvas"); p.width = p.height = 7;
+  const g = p.getContext("2d");
+  g.fillStyle = tc("--c-dot", "rgba(255,255,255,.22)");
+  g.beginPath(); g.arc(1.5,1.5,1,0,7); g.fill();
+  dotPat = ctx.createPattern(p,"repeat");
+  return dotPat;
+}
+
+function drawChart(){
+  const c = $("chart"), box = c.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const W = box.clientWidth, H = 250;
+  if (c.width !== Math.round(W*dpr) || c.height !== Math.round(H*dpr)){
+    c.width = Math.round(W*dpr); c.height = Math.round(H*dpr);
+  }
+  const ctx = c.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  const s = st && st.series || [];
+  $("chartEmpty").style.display = s.length < 2 ? "flex" : "none";
+  if (s.length < 2) return;
+
+  const padL=40, padR=8, padT=16, padB=22;
+  const t0=s[0][0], t1=s[s.length-1][0], span=Math.max(t1-t0,1);
+  let maxV=10, peak=0;
+  for (const p of s){ if (p[1]>maxV) maxV=p[1]; if (p[2]>maxV) maxV=p[2]; if (p[1]>peak) peak=p[1]; }
+  if (st.badMbps) maxV = Math.max(maxV, st.badMbps*1.08);
+  maxV *= 1.15;
+  // «красивый» максимум, чтобы метки Y были круглыми
+  const pow = Math.pow(10, Math.floor(Math.log10(maxV)));
+  for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]){
+    if (m*pow >= maxV){ maxV = m*pow; break; }
+  }
+  const X = t => padL + (t-t0)/span*(W-padL-padR);
+  const Y = v => H-padB - v/maxV*(H-padT-padB);
+
+  // сетка + подписи Y
+  ctx.font = "10.5px "+getComputedStyle(document.body).getPropertyValue("--mono");
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  const fmtV = v => { const r = Math.round(v*10)/10; return r % 1 === 0 ? String(r) : r.toFixed(1); };
+  for (let i=0;i<=4;i++){
+    const v = maxV*i/4, y = Y(v);
+    ctx.strokeStyle = tc("--c-axis", "var(--card2)"); ctx.beginPath();
+    ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    ctx.fillStyle = tc("--c-label", "#67676d");
+    ctx.fillText(fmtV(v), padL-7, y);
+  }
+  // подписи X: с секундами, если окно короткое; пропускаем те, что не влезают
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = tc("--c-label", "#67676d");
+  const xfmt = span < 6*60000 ? hhmmss : hhmm;
+  const nx = 5;
+  for (let i=0;i<=nx;i++){
+    const t = t0 + span*i/nx, x = X(t);
+    if (x > W-padR-30) continue;
+    ctx.fillText(xfmt(t), x, H-6);
+  }
+
+  // порог «плохо»
+  if (st.badMbps && st.badMbps < maxV){
+    ctx.save(); ctx.setLineDash([4,4]); ctx.strokeStyle = "rgba(248,113,113,.5)";
+    ctx.beginPath(); ctx.moveTo(padL,Y(st.badMbps)); ctx.lineTo(W-padR,Y(st.badMbps)); ctx.stroke();
+    ctx.restore();
+  }
+
+  // красные метки проблемных проверок в окне графика (как маркеры фейлов в референсе)
+  for (const e of (st.history||[])){
+    if (!e.err && e.down >= st.badMbps) continue;
+    const t = Date.parse(e.ts);
+    if (t < t0 || t > t1) continue;
+    const x = X(t);
+    ctx.strokeStyle = "rgba(248,113,113,.65)";
+    ctx.beginPath(); ctx.moveTo(x,padT+6); ctx.lineTo(x,H-padB); ctx.stroke();
+    ctx.fillStyle = tc("--bad", "#f87171"); ctx.fillRect(x-2.5, padT, 5, 5);
+  }
+
+  // ↑ отдача — приглушённая линия
+  ctx.strokeStyle = tc("--up", "#6b8aad"); ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  s.forEach((p,i)=> i ? ctx.lineTo(X(p[0]),Y(p[2])) : ctx.moveTo(X(p[0]),Y(p[2])));
+  ctx.stroke();
+
+  // ↓ загрузка: заливка точечным паттерном + светящаяся линия
+  ctx.save();
+  ctx.beginPath();
+  s.forEach((p,i)=> i ? ctx.lineTo(X(p[0]),Y(p[1])) : ctx.moveTo(X(p[0]),Y(p[1])));
+  ctx.lineTo(X(t1),H-padB); ctx.lineTo(X(t0),H-padB); ctx.closePath();
+  ctx.fillStyle = pattern(ctx); ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.shadowColor = tc("--c-line", "#fff"); ctx.shadowBlur = 10;
+  ctx.strokeStyle = tc("--c-line", "#ffffff"); ctx.lineWidth = 1.8; ctx.lineJoin = "round";
+  ctx.beginPath();
+  s.forEach((p,i)=> i ? ctx.lineTo(X(p[0]),Y(p[1])) : ctx.moveTo(X(p[0]),Y(p[1])));
+  ctx.stroke();
+  ctx.restore();
+
+  // живая точка
+  const lx = X(t1), ly = Y(s[s.length-1][1]);
+  ctx.save();
+  ctx.shadowColor = tc("--c-line", "#fff"); ctx.shadowBlur = 18;
+  ctx.fillStyle = tc("--c-line", "#fff");
+  ctx.beginPath(); ctx.arc(lx,ly,3.5,0,7); ctx.fill();
+  ctx.restore();
+
+  // подвал графика
+  $("peak").textContent = Math.round(peak);
+  $("fPoints").textContent = "точек " + s.length;
+  $("fWindow").textContent = "окно " + Math.max(1, Math.round((t1-t0)/60000)) + " мин";
+  $("fBad").textContent = st.badMbps ? "красный ниже " + Math.round(st.badMbps) + " Мбит/с" : "";
+}
+
+/* ── частота обновления живого графика ───────────────────────── */
+const RATES = [1000, 2000, 5000, 10000];
+let rateMs = Number(localStorage.getItem("stt_netrate")) || 2000;
+if (!RATES.includes(rateMs)) rateMs = 2000;
+$("netRate").value = String(rateMs);
+let rateSyncTried = false;
+
+function syncRate(){
+  if (rateSyncTried || (st && st.netRateMs === rateMs)) return;
+  rateSyncTried = true;
+  fetch("/api/netrate", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ms: rateMs}),
+  }).catch(()=>{});
+}
+
+$("netRate").addEventListener("change", e => {
+  rateMs = Number(e.target.value) || 2000;
+  localStorage.setItem("stt_netrate", String(rateMs));
+  rateSyncTried = false;
+  syncRate();
+  clearTimeout(pollTimer);
+  tick();
+});
+
+/* ── кто потребляет интернет ─────────────────────────────────── */
+let procOpen = false, procTab = "procs", pn = null;
+const fmtBps = b => b >= (1<<20) ? (b/(1<<20)).toFixed(1)+" МБ/с"
+  : b >= (1<<10) ? (b/(1<<10)).toFixed(1)+" КБ/с" : Math.round(b)+" Б/с";
+
+$("procBtn").addEventListener("click", () => setProcOpen(!procOpen));
+$("procClose").addEventListener("click", () => setProcOpen(false));
+for (const b of document.querySelectorAll(".ptab"))
+  b.addEventListener("click", () => {
+    procTab = b.dataset.tab;
+    document.querySelectorAll(".ptab").forEach(x => x.classList.toggle("on", x === b));
+    renderProc();
+  });
+
+function setProcOpen(v){
+  procOpen = v;
+  $("procCard").style.display = v ? "" : "none";
+  $("procBtn").classList.toggle("on", v);
+  if (v) loadProcnet();
+}
+
+async function loadProcnet(){
+  try{
+    const r = await fetch("/api/procnet", {cache:"no-store"});
+    pn = await r.json();
+    renderProc();
+  }catch(e){}
+}
+
+function renderProc(){
+  if (!procOpen || !pn) return;
+  $("procHint").textContent = "обновление " + Math.round(rateMs/1000) + " с";
+  const body = $("procBody");
+  if (procTab === "procs"){
+    const rows = pn.procs || [];
+    if (!rows.length){
+      body.innerHTML = '<div class="proc-empty">активных соединений нет</div>';
+      return;
+    }
+    body.innerHTML = rows.map(p => {
+      const hosts = (p.hosts || []).join(" · ") + (p.hostsMore ? " +"+p.hostsMore : "");
+      return '<div class="pr-row" title="'+esc(hosts)+'">'+
+        '<span class="pr-name">'+esc(p.name || ("pid "+p.pid))+'</span>'+
+        '<span class="pr-hosts">'+esc(hosts)+'</span>'+
+        '<span class="pr-conns">'+p.conns+' соед.</span>'+
+        '<span class="pr-bps'+(p.bps < 1 ? " zero" : "")+'">≈ '+fmtBps(p.bps)+'</span></div>';
+    }).join("");
+  } else {
+    const rows = pn.conns || [];
+    if (!rows.length){
+      body.innerHTML = '<div class="proc-empty">активных соединений нет</div>';
+      return;
+    }
+    body.innerHTML = rows.map(c => {
+      const port = c.remote.slice(c.remote.lastIndexOf(":")+1);
+      const main = c.host ? c.host+":"+port : c.remote;
+      const proto = c.proto + (c.state ? " · " + c.state.toLowerCase() : "");
+      return '<div class="cn-row" title="'+esc((c.name||("pid "+c.pid))+" → "+c.remote)+'">'+
+        '<span class="cn-name">'+esc(c.name || ("pid "+c.pid))+'</span>'+
+        '<span class="cn-proto">'+esc(proto)+'</span>'+
+        '<span class="cn-remote"><b>'+esc(main)+'</b>'+
+        (c.host && c.remote ? " · "+esc(c.remote) : "")+'</span></div>';
+    }).join("");
+  }
+}
+
+/* ── ИИ-агент: орб, инициализация, чат ───────────────────────── */
+let agentSt = null, chatBusy = false;
+let chatStartedAt = 0, initStartedAt = 0;
+
+// глиф Agent Progress: 9 ячеек с волной задержек (порт starc007/agent-progress)
+const AP_CELLS = Array.from({length:9}, (_,i) =>
+  `<i style="--d:${(i*0.14).toFixed(2)}s"></i>`).join("");
+(function initGlyphs(){
+  document.querySelectorAll("[data-ap-glyph]").forEach(el => el.innerHTML = AP_CELLS);
+})();
+
+const fmtElapsed = s => s >= 60
+  ? Math.floor(s/60) + " м " + (s%60).toFixed(1) + " с"
+  : s.toFixed(1) + " с";
+
+// один таймер на всё: время инициализации и время «думаю» в чате
+setInterval(() => {
+  const now = performance.now();
+  if (initStartedAt) $("loadTime").textContent = fmtElapsed((now - initStartedAt)/1000);
+  if (chatBusy && chatStartedAt){
+    const el = $("apTime");
+    if (el) el.textContent = fmtElapsed((now - chatStartedAt)/1000);
+  }
+}, 100);
+
+// обновить бабл «думаю» из этапов бэкенда (label = активный шаг)
+function updateThinkProgress(){
+  const labelEl = $("apLabel"), stepsEl = $("agentSteps");
+  if (!chatBusy || !labelEl) return;
+  const stages = (agentSt && agentSt.stages) || [];
+  const active = stages.find(s => s.state === "active");
+  if (active) labelEl.textContent = active.note
+    ? active.name + " — " + active.note
+    : active.name;
+  if (stepsEl){
+    stepsEl.innerHTML = stages
+      .filter(s => s.name !== "готово" && s.state === "done")
+      .map(s => {
+        const note = s.note ? " — " + esc(s.note.slice(0, 60)) : "";
+        return '<div class="ap-step done">' + esc(s.name) + note + '</div>';
+      }).join("");
+  }
+}
+
+(function initOrb(){
+  const canvas = $("orbCanvas");
+  let orb = null;
+  if (window.createOrb) orb = window.createOrb(canvas);
+  if (!orb){
+    canvas.style.display = "none";
+    const f = document.createElement("span");
+    f.className = "orb-fallback";
+    f.innerHTML = "<i></i><i></i>";
+    $("orbBtn").appendChild(f);
+  }
+})();
+
+function renderAgent(){
+  const a = agentSt;
+  if (!a) return;
+  const orbBtn = $("orbBtn"), st = $("agentStatus");
+  orbBtn.classList.toggle("off", a.status !== "ready");
+  orbBtn.classList.toggle("starting", a.status === "starting");
+  orbBtn.classList.toggle("ready", a.status === "ready");
+  st.className = "agent-status" + (a.status === "ready" ? " ready" : a.status === "error" ? " err" : "");
+  st.textContent =
+    a.status === "off"    ? "не запущен — нажмите «Инициализировать»" :
+    a.status === "starting" ? (a.phase || "запускаюсь") + "…" :
+    a.status === "ready"  ? "на связи" + (a.model ? " · модель " + a.model : "") + " · всё локально" :
+    (a.err || "ошибка");
+  $("agentInitBtn").style.display = (a.status === "off" || a.status === "error") ? "" : "none";
+  $("agentInitBtn").textContent = a.status === "error" ? "Повторить" : "Инициализировать";
+  $("agentStopBtn").style.display = (a.status === "ready" || a.status === "starting") ? "" : "none";
+  $("agentChatSec").style.display = a.status === "ready" ? "" : "none";
+  const ov = $("agentLoading");
+  if (a.status === "starting"){
+    ov.style.display = "flex";
+    $("agentPhase").textContent = (a.phase || "запускаюсь") + "…";
+    $("loadLabel").textContent = a.phase || "запускаюсь";
+    if (!initStartedAt) initStartedAt = performance.now();
+    vpRun($("agentLoading"), a.phase || "", !vpTimer, a.prog || 0, a.step || 0);
+    if (!initPoll) initPoll = setInterval(loadAgent, 700); // живые проценты
+  } else {
+    initStartedAt = 0;
+    if (initPoll){ clearInterval(initPoll); initPoll = null; }
+    if (vpTimer) vpDone($("agentLoading"));
+    ov.style.display = "none";
+  }
+  const box = $("agentInsights");
+  const sec = $("agentInsightsSec");
+  if (a.status === "off" || a.status === "error"){
+    // вместо «Выводов» — подсказка, какие команды понимает агент
+    sec.style.display = "";
+    $("agentInsightsTitle").textContent = "Что он умеет";
+    box.innerHTML =
+      '<div class="ai-line">После инициализации пишите в чате, например:</div>' +
+      ['«сделай замер и объясни результат»',
+       '«какая локация сейчас быстрее?»',
+       '«когда лучше качать большие файлы?»',
+       '«поставь автопроверку каждые 30 минут»',
+       '«следи за router.local каждые 5 минут»']
+        .map(s => '<div class="ai-line">· ' + esc(s) + '</div>').join("");
+  } else if (a.insights && a.insights.length){
+    sec.style.display = "";
+    $("agentInsightsTitle").textContent = "Выводы";
+    box.innerHTML = a.insights.slice(0, 3).map(s => '<div class="ai-line">· ' + esc(s) + '</div>').join("");
+  } else {
+    sec.style.display = "none";
+    box.innerHTML = "";
+  }
+  // во время запроса чат трогать нельзя: бабл «думаю» здесь живёт
+  if (!chatBusy) renderChat(a.msgs || []);
+  else updateThinkProgress();
+}
+
+// мягкий авто-скролл к новейшему сообщению (паттерн 21st.dev AI Messages):
+// срабатывает только когда появилось новое, не дёргает при каждом тике
+let chatLen = 0;
+function chatToNew(){
+  const b = $("chatLog").lastElementChild;
+  if (b) b.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+function renderChat(msgs){
+  const log = $("chatLog");
+  const isNew = msgs.length !== chatLen;
+  chatLen = msgs.length;
+  log.innerHTML = msgs.length ? msgs.map(m =>
+    '<div class="bubble ' + (m.role === "user" ? "user" : "bot") + '">' + esc(m.content) + '</div>'
+  ).join("") : '<div class="bubble bot">Привет! Чем могу помочь?</div>';
+  if (isNew) chatToNew();
+}
+
+async function loadAgent(){
+  try{
+    const r = await fetch("/api/agent", {cache:"no-store"});
+    agentSt = await r.json();
+    renderAgent();
+  }catch(e){}
+}
+
+$("agentInitBtn").addEventListener("click", async () => {
+  $("agentInitBtn").disabled = true;
+  try{ await fetch("/api/agent/init", {method:"POST"}); }catch(e){}
+  $("agentInitBtn").disabled = false;
+  loadAgent();
+});
+
+/* ── вертикальный прогресс (порт modern-verticle-progress): работает
+   на любом контейнере — оверлей инициализации ИИ и оверлей архива.
+   Пока реального процента нет — симуляция к 25/95; как только бэкенд
+   отдал prog — плавно едем к настоящему проценту ── */
+let vpTimer = null, vpVal = 0, vpTargetVal = 25, vpReal = false, initPoll = null;
+function vpRender(root){
+  const pct = Math.round(vpVal);
+  root.querySelector(".vp-fill").style.height = pct + "%";
+  root.querySelector(".vp-text b").textContent = String(pct);
+  root.querySelector(".vprogress").setAttribute("aria-valuenow", pct);
+}
+function vpSteps(root, step){
+  root.querySelectorAll(".load-steps span").forEach(el => {
+    const i = +el.dataset.ls;
+    el.className = i < step ? "done" : i === step ? "act" : "";
+  });
+}
+function vpRun(root, phase, fresh, prog, step){
+  vpReal = prog > 0;
+  vpTargetVal = vpReal ? Math.min(99, prog * 100)
+    : (phase.indexOf("загружаю") === 0 ? 95 : 25); // сервер → модель
+  if (vpTargetVal < vpVal) vpTargetVal = vpVal;   // назад не откатываемся
+  if (fresh) vpVal = 0;
+  vpSteps(root, step);
+  if (vpTimer) return; // уже ползём — цель обновится сама
+  vpRender(root);
+  vpTimer = setInterval(() => {
+    if (vpReal){
+      vpVal += (vpTargetVal - vpVal) * 0.18; // реальный %: быстро к цели
+    } else {
+      // симуляция: асимптотически к цели, быстро в начале
+      vpVal += (vpTargetVal - vpVal) * 0.035 + 0.06;
+      if (vpVal > vpTargetVal) vpVal = vpTargetVal;
+    }
+    vpRender(root);
+  }, 120);
+}
+function vpDone(root){
+  if (vpTimer){
+    clearInterval(vpTimer);
+    vpTimer = null;
+  }
+  vpVal = 100;
+  vpRender(root);      // краткий кадр «100%» перед скрытием оверлея
+}
+
+/* ── архив данных: экспорт/импорт (прогресс переиспользует vp) ─────── */
+let archActive = false, archPoll = null, archText = null;
+const archOverlay = $("archOverlay");
+const ARCH_STEPS = {
+  export: ["сбор данных", "запись файла", "готово"],
+  import: ["чтение и проверка", "запись строк", "сохранение"]
+};
+function archStepsUI(op, step){
+  $("archSteps").innerHTML = ARCH_STEPS[op].map((t, i) =>
+    `<span data-ls="${i}" class="${i < step ? "done" : i === step ? "act" : ""}"><i></i>${t}</span>`).join("");
+}
+function archPhaseUI(t, err){
+  const el = $("archPhase");
+  el.textContent = t;
+  el.classList.toggle("err", !!err);
+}
+function archOverlayShow(title, op){
+  $("archTitle").textContent = title;
+  $("archAsk").style.display = "none";
+  archStepsUI(op, 0);
+  archPhaseUI("готовлюсь…");
+  archOverlay.style.display = "flex";
+  vpRun(archOverlay, "", true, 0, 0);
+}
+function archOverlayHide(){
+  if (archPoll){ clearInterval(archPoll); archPoll = null; }
+  archOverlay.style.display = "none";
+  archActive = false;
+}
+async function pollArchStatus(){
+  try{
+    const s = await (await fetch("/api/archive/status", {cache:"no-store"})).json();
+    if (s.status !== "busy") return;
+    const p = s.phase || "";
+    const step = p.startsWith("записываю") ? 1 : 0;
+    archStepsUI(s.op === "export" ? "export" : "import", step);
+    archPhaseUI(p);
+    vpRun(archOverlay, p, false, s.prog || 0, step);
+  }catch(e){}
+}
+function archFinish(msg, err){
+  if (archPoll){ clearInterval(archPoll); archPoll = null; }
+  archText = null;
+  vpDone(archOverlay);
+  archPhaseUI(msg, err);
+  setTimeout(archOverlayHide, err ? 2800 : 1700);
+}
+
+// экспорт: показать прогресс, скачать файл браузером
+$("archExportBtn").addEventListener("click", async () => {
+  if (archActive) return;
+  archActive = true;
+  archOverlayShow("Экспорт архива", "export");
+  archPoll = setInterval(pollArchStatus, 500);
+  try{
+    const r = await fetch("/api/archive/export", {cache:"no-store"});
+    if (!r.ok){ archFinish("Ошибка: " + (await r.text()).slice(0, 140), true); return; }
+    const blob = await r.blob();
+    const cd = r.headers.get("Content-Disposition") || "";
+    const name = (cd.match(/filename="([^"]+)"/) || [, "speedtest-archive.jsonl"])[1];
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    archStepsUI("export", 2);
+    archFinish("Файл сохранён: " + name);
+  }catch(e){ archFinish("Ошибка: " + e, true); }
+});
+
+// импорт: выбор файла → проверка → (пересечение? вопрос) → загрузка
+$("archImportBtn").addEventListener("click", () => {
+  if (!archActive) $("archFile").click();
+});
+$("archFile").addEventListener("change", async () => {
+  const f = $("archFile").files[0];
+  $("archFile").value = "";
+  if (!f || archActive) return;
+  archActive = true;
+  try{ archText = await f.text(); }
+  catch(e){ archActive = false; return; }
+  archOverlayShow("Загрузка архива", "import");
+  archPhaseUI("проверяю файл…");
+  try{
+    const r = await fetch("/api/archive/import?mode=check",
+      {method:"POST", headers:{"Content-Type": "application/jsonl"}, body:archText});
+    const res = await r.json();
+    if (!r.ok){ archFinish("Ошибка: " + (res.error || r.statusText), true); return; }
+    if (res.overlapCount > 0){
+      vpDone(archOverlay);
+      archPhaseUI("Найдено пересечение с существующей историей");
+      $("archAskText").textContent =
+        "Период " + res.from + " – " + res.to + " уже есть в истории: совпадает " +
+        res.overlapCount + " из " + res.checks + " замеров." +
+        (res.hasTraffic ? " В архиве также есть данные трафика." : "") +
+        " Перезаписать совпавшие замеры или пропустить их (загрузить только новые)?";
+      $("archAsk").style.display = "flex";
+    } else {
+      applyArch("skip");
+    }
+  }catch(e){ archFinish("Ошибка: " + e, true); }
+});
+async function applyArch(mode){
+  const body = archText;
+  $("archAsk").style.display = "none";
+  archStepsUI("import", 1);
+  archPhaseUI("загружаю…");
+  archPoll = setInterval(pollArchStatus, 400);
+  try{
+    const r = await fetch("/api/archive/import?mode=" + mode,
+      {method:"POST", headers:{"Content-Type": "application/jsonl"}, body});
+    const res = await r.json();
+    if (!r.ok){ archFinish("Ошибка: " + (res.error || r.statusText), true); return; }
+    archStepsUI("import", 2);
+    archFinish(res.message || "Готово");
+  }catch(e){ archFinish("Ошибка: " + e, true); }
+}
+$("archOverwrite").addEventListener("click", () => applyArch("overwrite"));
+$("archSkip").addEventListener("click", () => applyArch("skip"));
+$("archCancel").addEventListener("click", () => archOverlayHide());
+
+/* ── тема: тёмная/светлая ──────────────────────────────────────────── */
+$("themeBtn").addEventListener("click", () => {
+  const light = document.documentElement.classList.toggle("light");
+  $("themeBtn").textContent = light ? "🌙" : "☀️";
+  dotPat = null; // паттерн точек графика зависит от темы
+  try{ localStorage.setItem("stt_theme", light ? "light" : "dark"); }catch(e){}
+});
+(function(){
+  let t = "dark";
+  try{ t = localStorage.getItem("stt_theme") || "dark"; }catch(e){}
+  $("themeBtn").textContent = t === "light" ? "🌙" : "☀️";
+})();
+$("agentStopBtn").addEventListener("click", async () => {
+  try{ await fetch("/api/agent/stop", {method:"POST"}); }catch(e){}
+  loadAgent();
+});
+$("orbBtn").addEventListener("click", () => {
+  if (!agentSt) return;
+  if (agentSt.status === "off" || agentSt.status === "error"){
+    $("agentInitBtn").click();
+  } else if (agentSt.status === "ready"){
+    $("chatInput").focus(); // чат раскрыт всегда, орб лишь ставит курсор в поле
+  }
+});
+
+async function sendChat(){
+  if (chatBusy) return;
+  const input = $("chatInput");
+  const q = input.value.trim();
+  if (!q) return;
+  chatBusy = true;
+  chatStartedAt = performance.now();
+  input.value = ""; input.disabled = true; $("chatSend").disabled = true;
+  const log = $("chatLog");
+  log.insertAdjacentHTML("beforeend",
+    '<div class="bubble user">' + esc(q) + '</div>' +
+    '<div class="bubble bot think" id="chatThinking">' +
+      '<div class="agent-progress">' +
+        '<span class="ap-glyph">' + AP_CELLS + '</span>' +
+        '<span class="ap-label" id="apLabel">обрабатываю запрос</span>' +
+        '<span class="ap-time" id="apTime">0.0 с</span>' +
+      '</div>' +
+      '<div class="agent-steps" id="agentSteps"></div>' +
+    '</div>');
+  chatToNew();
+  // живой опрос этапов чаще тика страницы: метка и шаги обновляются на лету
+  const progressPoll = setInterval(loadAgent, 800);
+  try{
+    const r = await fetch("/api/agent/chat", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({message: q}),
+    });
+    const d = await r.json();
+    renderChat(d.msgs || []);
+    if (d.error){
+      log.insertAdjacentHTML("beforeend", '<div class="bubble bot">⚠ ' + esc(d.error) + '</div>');
+      chatToNew();
+    }
+  }catch(e){
+    const th = $("chatThinking");
+    if (th) th.textContent = "⚠ нет связи с приложением";
+  }
+  clearInterval(progressPoll);
+  chatBusy = false;
+  input.disabled = false; $("chatSend").disabled = false; input.focus();
+}
+$("chatSend").addEventListener("click", sendChat);
+$("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
+for (const b of document.querySelectorAll(".chip-q"))
+  b.addEventListener("click", () => {
+    $("chatInput").value = b.dataset.q;
+    $("chatInput").focus();
+  });
+
+/* ── опрос ───────────────────────────────────────────────────── */
+async function tick(){
+  try{
+    const r = await fetch("/api/state", {cache:"no-store"});
+    st = await r.json();
+    syncRate();
+    $("connLost").classList.remove("show");
+    renderHead(); renderDyn(); drawChart(); renderWatch(st.watch);
+    if (procOpen) loadProcnet();
+    loadAgent();
+  }catch(e){
+    $("connLost").classList.add("show");
+  }
+  pollTimer = setTimeout(tick, st && st.checking ? 800 : rateMs);
+}
+
+for (const [id, key] of [["fLoc","loc"], ["fTod","tod"], ["fPeriod","period"]])
+  $(id).addEventListener("change", e => { flt[key] = e.target.value; saveFlt(); renderDyn(); });
+
+// независимые сбросы: рейтинг — только локацию, часы — только время суток
+document.querySelector('[data-reset="loc"]')?.addEventListener("click", () => {
+  flt.loc = "all"; saveFlt(); renderDyn();
+});
+document.querySelector('[data-reset="tod"]')?.addEventListener("click", () => {
+  flt.tod = "all"; saveFlt(); renderDyn();
+});
+$("resetAll").addEventListener("click", () => {
+  flt.loc = "all"; flt.tod = "all"; flt.period = "all";
+  saveFlt(); renderDyn();
+});
+
+// очистка истории — только через подтверждение
+const modal = $("confirmModal");
+const openConfirm = () => {
+  $("mCount").textContent = (st && st.history ? st.history.length : 0);
+  modal.classList.add("show");
+};
+const closeConfirm = () => modal.classList.remove("show");
+$("clearHist").addEventListener("click", openConfirm);
+$("mCancel").addEventListener("click", closeConfirm);
+modal.addEventListener("click", e => { if (e.target === modal) closeConfirm(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeConfirm(); });
+$("mOk").addEventListener("click", async () => {
+  closeConfirm();
+  try{ await fetch("/api/history/clear", {method:"POST"}); }catch(e){}
+  clearTimeout(pollTimer); tick();
+});
+
+$("runBtn").addEventListener("click", async () => {
+  $("runBtn").disabled = true;
+  try{ await fetch("/api/run", {method:"POST"}); }catch(e){}
+  clearTimeout(pollTimer); tick();
+});
+window.addEventListener("resize", () => { if (st){ drawChart(); drawHours(); } });
+tick();
+</script>
+</body>
+</html>
