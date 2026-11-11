@@ -27,7 +27,7 @@ function IconTile({ icon: Icon, tone }: { icon: LucideIcon; tone: "ok" | "bad" }
   );
 }
 
-const GH = "https://github.com/testvaa/speed_test_cheeker";
+const GH = "https://github.com/testvaa/speed_test_checker";
 const DL_WIN = GH + "/releases/latest/download/SpeedTestTray.exe";
 const DL_MAC = GH + "/releases/latest/download/SpeedTestTray-macos-arm64";
 const DL_LIN = GH + "/releases/latest/download/SpeedTestTray-linux-x64";

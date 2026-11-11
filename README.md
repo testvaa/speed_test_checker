@@ -314,8 +314,8 @@ npm run dev      # локальная разработка
 npm run build    # сборка в ../docs (для GitHub Pages)
 ```
 
-Сборка идёт с `base: /speed_test_cheeker/` — под URL проекта
-`https://testvaa.github.io/speed_test_cheeker/`. В `docs/` лежит
+Сборка идёт с `base: /speed_test_checker/` — под URL проекта
+`https://testvaa.github.io/speed_test_checker/`. В `docs/` лежит
 собранный результат (коммитится). Проект настроен под shadcn/ui
 (`components.json`, алиас `@/`) — компоненты из shadcn и Magic MCP
 добавляются через `npx shadcn add <component>`.
