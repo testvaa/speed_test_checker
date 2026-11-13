@@ -409,28 +409,70 @@
   .dots{display:inline-flex;margin-right:8px;vertical-align:-1px}
   @keyframes dotbounce{0%,70%,100%{transform:translateY(0);opacity:.45}
     35%{transform:translateY(-4px);opacity:1}}
-  /* Agent Progress (порт starc007/agent-progress, 21st.dev #29323):
-     глиф 3×3 волной пульсирует + метка действия + живой таймер */
-  .agent-progress{display:inline-flex;align-items:center;gap:10px;
-    font:12.5px var(--mono);color:var(--dim);max-width:100%}
-  .ap-glyph{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;
-    width:17px;height:17px;flex:none;color:var(--txt2)}
-  .ap-glyph i{border-radius:1px;background:currentColor;opacity:.3;
-    animation:apcell 1.55s cubic-bezier(.77,0,.175,1) infinite;
-    animation-delay:var(--d)}
-  @keyframes apcell{0%,100%{opacity:.28;transform:scale(.72)}
-    50%{opacity:1;transform:scale(1)}}
-  .ap-label{font-family:var(--sans);font-weight:500;color:var(--txt2);
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .ap-time{color:var(--dimmer);font-variant-numeric:tabular-nums;flex:none}
-  .agent-steps{margin-top:7px;display:flex;flex-direction:column;gap:3px}
-  .ap-step{font:11px var(--mono);color:var(--dimmer);
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .ap-step.done{color:var(--dim)}
-  .ap-step.done::before{content:"✓ ";color:var(--ok)}
-  .ap-step.active::before{content:"… ";color:var(--txt2)}
+  /* Agent Status (порт «agent status» — uiNerd, x.com/uiNerd/status/2121263708076945437):
+     пилюля-капсула со спиннером, меткой, таймером и шевроном; по клику
+     раскрывается карточка «Ход запроса» со строками-шагами и стоимостью */
+  .think{display:flex;flex-direction:column;align-items:flex-start;max-width:100%}
+  .as-pill{display:inline-flex;align-items:center;gap:9px;max-width:100%;
+    height:34px;padding:0 9px 0 13px;border-radius:999px;cursor:pointer;
+    background:#232326;border:1px solid #38383c;color:#f2f2f4;
+    box-shadow:0 4px 12px rgba(0,0,0,.4);user-select:none;
+    transition:border-color .15s}
+  .as-pill:hover{border-color:#4a4a52}
+  .as-pill.static{cursor:default}
+  .as-spin{width:13px;height:13px;flex:none;border-radius:50%;
+    border:2px solid rgba(242,242,244,.22);border-top-color:#f2f2f4;
+    animation:asrot .8s linear infinite}
+  @keyframes asrot{to{transform:rotate(360deg)}}
+  .as-label{font:500 13px var(--sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .as-time{font:12px var(--mono);color:#8a8a8e;font-variant-numeric:tabular-nums;flex:none}
+  .as-chev{width:22px;height:22px;flex:none;display:flex;align-items:center;
+    justify-content:center;border-radius:50%;color:#8a8a8e;
+    transition:transform .2s ease}
+  .as-pill.open .as-chev{transform:rotate(180deg)}
+  .as-card{display:none;width:min(340px,100%);margin-top:8px;padding:12px;
+    background:#1e1e21;border:1px solid #2c2c2f;border-radius:12px;
+    box-shadow:0 12px 32px rgba(0,0,0,.38)}
+  .as-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+  .as-title{font:600 13.5px var(--sans);color:#f2f2f4}
+  .as-count{font:11.5px var(--mono);color:#8a8a8e}
+  .as-steps{display:flex;flex-direction:column;gap:6px}
+  .as-step{display:flex;align-items:center;gap:9px;min-height:36px;padding:5px 10px;
+    border-radius:9px;background:#26262a;border:1px solid #303034;
+    font:12.5px var(--sans);color:#d4d4d8}
+  .as-step.active{background:rgba(245,166,35,.09);border-color:rgba(245,166,35,.38)}
+  .as-ico{width:22px;height:22px;flex:none;border-radius:50%;
+    background:#1a1a1d;display:flex;align-items:center;justify-content:center;
+    color:#a1a1aa}
+  .as-step.active .as-ico{color:#f5a623}
+  .as-minispin{width:11px;height:11px;border-radius:50%;
+    border:2px solid rgba(245,166,35,.3);border-top-color:#f5a623;
+    animation:asrot .8s linear infinite}
+  .as-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .as-note{font:11px var(--mono);color:#8a8a8e;margin-left:6px}
+  .as-meta{font:11px var(--mono);color:#8a8a8e;flex:none;font-variant-numeric:tabular-nums}
+  .as-ticks{height:5px;margin-top:11px;border-radius:2px;
+    background:repeating-linear-gradient(90deg,#3a3a40 0 2px,transparent 2px 9px);
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 25%,#000 75%,transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 25%,#000 75%,transparent);
+    animation:asticks .9s linear infinite}
+  @keyframes asticks{to{background-position:9px 0}}
+  html.light .as-pill{background:#fff;border-color:#c9c9d2;color:#1c1c22;
+    box-shadow:0 4px 12px rgba(30,30,60,.12)}
+  html.light .as-spin{border-color:rgba(30,30,40,.22);border-top-color:#1c1c22}
+  html.light .as-time,html.light .as-chev,html.light .as-count,
+  html.light .as-note,html.light .as-meta{color:#74747e}
+  html.light .as-card{background:#fff;border-color:#d8d8df;
+    box-shadow:0 12px 32px rgba(30,30,60,.14)}
+  html.light .as-title{color:#1c1c22}
+  html.light .as-step{background:#f4f4f6;border-color:#e0e0e6;color:#3a3a42}
+  html.light .as-step.active{background:rgba(200,135,8,.08);border-color:rgba(200,135,8,.4)}
+  html.light .as-ico{background:#e9e9ee;color:#66666e}
+  html.light .as-step.active .as-ico{color:#c88708}
+  html.light .as-minispin{border-color:rgba(200,135,8,.3);border-top-color:#c88708}
+  html.light .as-ticks{background:repeating-linear-gradient(90deg,#a8a8b4 0 2px,transparent 2px 9px)}
   @media(prefers-reduced-motion:reduce){
-    .ap-glyph i{animation:none;opacity:.55;transform:none}
+    .as-spin,.as-minispin,.as-ticks{animation:none}
   }
 
   /* логические секции карточки агента: Наблюдение / Выводы / Чат */
@@ -452,12 +494,84 @@
   .bubble.user{align-self:flex-end;background:#22222a;color:var(--txt2);border:1px solid var(--border2)}
   html.light .bubble.user{background:#dbe7fa;color:#23405f;border-color:#c3d6f2}
   .bubble.bot{align-self:flex-start;background:var(--card2);color:var(--txt2);border:1px solid var(--border)}
-  .bubble.bot.think{color:var(--dimmer);font-style:italic}
   .chat-row{display:flex;gap:8px;margin-top:10px}
   .chat-row input{flex:1;min-width:0;background:var(--btn);border:1px solid var(--border2);
     border-radius:8px;color:var(--txt2);font:13px var(--sans);padding:8px 12px}
   .chat-row input:focus{outline:none;border-color:var(--border2)}
   .chat-row input:disabled{opacity:.5}
+
+  /* ── Диск: что чем занято (LED-матрица, порт storage scanner —
+     kshvbgde x.com/2120782192385355974): свечение точек, sweep скана,
+     наведение подсвечивает сегмент, очистка осыпается частицами ── */
+  .disk-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .disk-head-btns{display:flex;gap:8px;flex:none;align-items:center}
+  .disk-usage b{font-size:26px;font-weight:700;letter-spacing:.2px;color:var(--txt)}
+  .disk-usage span{font-size:13.5px;color:var(--dim)}
+  .disk-sub{margin-top:7px;font:12px var(--mono);color:var(--dim);min-height:16px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .disk-sub b{color:var(--txt2);font-weight:500}
+  .disk-sub .mono{color:var(--dimmer)}
+  .disk-canvas{display:block;width:100%;height:76px;margin-top:10px;cursor:default;
+    border:1px solid var(--border);border-radius:10px;background:var(--card2)}
+  .disk-legend{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;margin-top:12px}
+  .disk-cat{display:flex;align-items:center;gap:7px;padding:3px 7px;border-radius:7px;
+    font:12.5px var(--sans);color:var(--txt2);transition:background .15s}
+  .disk-cat .ico{font-size:13px;flex:none}
+  .disk-cat .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .disk-cat .sz{font:11.5px var(--mono);color:var(--dim);flex:none;font-variant-numeric:tabular-nums}
+  .disk-cat.hl{background:var(--btn)}
+  .disk-hint{display:flex;align-items:center;gap:9px;margin-top:12px;
+    border-top:1px solid var(--border);padding-top:11px;min-height:36px;
+    font:12.5px var(--sans);color:var(--dim)}
+  .disk-hint-spin{width:12px;height:12px;flex:none;border-radius:50%;
+    border:2px solid var(--border2);border-top-color:var(--dim);animation:rot .8s linear infinite}
+  .disk-hint .btn{flex:none;padding:6px 12px}
+  .disk-hint .btn + .btn{margin-left:0}
+  #diskClearBtn{margin-left:auto}
+  .disk-drives{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+  .disk-drive{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--mono);
+    color:var(--dim);background:var(--btn);border:1px solid var(--border);border-radius:999px;
+    padding:4px 12px;cursor:pointer;transition:color .15s,border-color .15s,background .15s}
+  .disk-drive:hover{color:var(--txt2);border-color:var(--border2)}
+  .disk-drive.act{color:var(--txt);border-color:var(--border2);background:var(--btn2)}
+  .disk-drive small{color:var(--dimmer);font:10.5px var(--mono)}
+  .disk-drive.act small{color:var(--dim)}
+
+  /* оверлей «Оптимизации системы»: шаги, полоса, консольный лог */
+  .opt-deep{display:flex;align-items:flex-start;gap:8px;font:12.5px var(--sans);color:var(--dim);
+    margin:-8px 0 16px;cursor:pointer;line-height:1.5}
+  .opt-deep input{margin:2px 0 0}
+  .opt-card{width:min(560px,94vw)}
+  .opt-steps{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .opt-step{display:flex;align-items:center;gap:9px;font:12.5px var(--sans);color:var(--dimmer)}
+  .opt-step i{width:14px;font-style:normal;font-weight:700;text-align:center;flex:none}
+  .opt-step.act{color:var(--txt2)}
+  .opt-step.act i::before{content:"◆";color:var(--warn);animation:pulse 1.2s ease-in-out infinite}
+  .opt-step.done{color:var(--dim)}
+  .opt-step.done i::before{content:"✓";color:var(--ok)}
+  /* Tool Bash-шапка: статус-глиф, заголовок, mono-команда, таймер, кнопки */
+  .tb-head{display:flex;align-items:center;gap:9px;margin-bottom:12px;min-width:0}
+  .tb-status{width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center}
+  .tb-status svg{width:15px;height:15px}
+  .tb-status.running{color:var(--up)}
+  .tb-status.done{color:var(--ok)}
+  .tb-status.err{color:var(--bad)}
+  .tb-status .opt-spin{animation:rot .8s linear infinite}
+  .tb-title{font:600 13.5px var(--sans);color:var(--txt);flex:none}
+  .tb-detail{font:11.5px var(--mono);color:var(--dimmer);overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+  .tb-timer{font:12px var(--mono);color:var(--dim);font-variant-numeric:tabular-nums;flex:none}
+  .tb-body{display:flex;flex-direction:column;gap:10px}
+  .tb-out{background:var(--card2);border:1px solid var(--border);border-radius:8px;
+    padding:10px 12px;height:190px;overflow-y:auto;font:11.5px var(--mono);
+    color:var(--dim);line-height:1.55;white-space:pre-wrap;word-break:break-all}
+  .tb-out .tb-caret{display:inline-block;width:6px;height:12px;background:var(--txt2);
+    margin-left:2px;vertical-align:-2px;border-radius:1px;animation:pulse 1.2s steps(1) infinite}
+  .tb-out .opt-errline{color:var(--bad)}
+  .tb-out .opt-okline{color:var(--ok)}
+  .opt-bar{position:relative;height:4px;border-radius:2px;background:var(--card2);
+    border:1px solid var(--border);overflow:hidden}
+  .opt-bar-fill{position:absolute;inset:0;width:0%;background:var(--ok);transition:width .5s ease}
 </style>
 <script>try{if(localStorage.getItem("stt_theme")==="light")document.documentElement.classList.add("light")}catch(e){}
 try{if(localStorage.getItem("stt_lang")==="en"){document.documentElement.lang="en";window.__LANG="en"}}catch(e){}</script>
@@ -640,6 +754,27 @@ try{if(localStorage.getItem("stt_lang")==="en"){document.documentElement.lang="e
     </div>
   </div>
 
+  <!-- Диск: что чем занято (LED-матрица, порт storage scanner — kshvbgde) -->
+  <div class="card" id="diskCard">
+    <div class="disk-head">
+      <div class="disk-usage"><b id="diskUsed">…</b> <span data-i18n="disk_of">из</span> <span id="diskTotal">…</span> <span data-i18n="disk_used">занято</span></div>
+      <div class="disk-head-btns">
+        <button class="foot-btn" id="diskStop" type="button" style="display:none" data-i18n="disk_stop">■ стоп</button>
+        <button class="foot-btn" id="diskStart" type="button" data-i18n="disk_start">▶ старт</button>
+      </div>
+    </div>
+    <div class="disk-drives" id="diskDrives"></div>
+    <div class="disk-sub" id="diskSub"></div>
+    <canvas class="disk-canvas" id="diskCanvas"></canvas>
+    <div class="disk-legend" id="diskLegend"></div>
+    <div class="disk-hint">
+      <span class="disk-hint-spin" id="diskHintSpin" style="display:none"></span>
+      <span id="diskHintText" style="flex:1"></span>
+      <button class="btn disk-opt" id="diskOptBtn" type="button" style="display:none"></button>
+      <button class="btn" id="diskClearBtn" type="button" style="display:none"></button>
+    </div>
+  </div>
+
   </div><!-- /col-main -->
 
   <!-- ИИ-агент: правая колонка, отдельный чат с орбом -->
@@ -673,10 +808,10 @@ try{if(localStorage.getItem("stt_lang")==="en"){document.documentElement.lang="e
           <span data-ls="1"><i></i><span data-i18n="ls_model">модель с HuggingFace</span></span>
           <span data-ls="2"><i></i><span data-i18n="ls_start">запуск модели</span></span>
         </div>
-        <div class="agent-progress">
-          <span class="ap-glyph" data-ap-glyph></span>
-          <span class="ap-label" id="loadLabel">запускаюсь</span>
-          <span class="ap-time" id="loadTime">0.0 с</span>
+        <div class="as-pill static">
+          <span class="as-spin"></span>
+          <span class="as-label" id="loadLabel">запускаюсь</span>
+          <span class="as-time" id="loadTime">0.0 с</span>
         </div>
       </div>
       <div class="agent-sec" id="agentInsightsSec" style="display:none">
@@ -709,6 +844,44 @@ try{if(localStorage.getItem("stt_lang")==="en"){document.documentElement.lang="e
     <div class="m-actions">
       <button class="btn" id="mCancel" type="button" data-i18n="cancel">Отмена</button>
       <button class="btn danger" id="mOk" type="button" data-i18n="clear">🗑 Очистить</button>
+    </div>
+  </div>
+</div>
+
+<!-- подтверждение очистки кэшей/корзины и запуска оптимизации (карточка «Диск») -->
+<div class="modal" id="diskModal">
+  <div class="modal-card">
+    <div class="m-title" id="dmTitle"></div>
+    <div class="m-text" id="dmText"></div>
+    <label class="opt-deep" id="dmDeepRow" style="display:none">
+      <input type="checkbox" id="dmDeep">
+      <span data-i18n="disk_opt_deep">Глубокая очистка (ResetBase): после неё установленные обновления Windows нельзя будет удалить</span>
+    </label>
+    <div class="m-actions">
+      <button class="btn" id="dmCancel" type="button" data-i18n="cancel">Отмена</button>
+      <button class="btn danger" id="dmOk" type="button"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ход «Оптимизации системы»: Tool Bash-карточка — статус, таймер, Отменить, лог -->
+<div class="modal" id="optModal">
+  <div class="modal-card opt-card">
+    <div class="tb-head">
+      <span class="tb-status" id="optStatus"></span>
+      <span class="tb-title" id="optTitle" data-i18n="opt_run_title">Оптимизация системы</span>
+      <span class="tb-detail">SpeedTestTray.exe -optimize</span>
+      <span class="tb-timer" id="optTimer"></span>
+      <button class="foot-btn" id="optStop" type="button" style="display:none" data-i18n="opt_cancel_btn">Отменить</button>
+      <button class="foot-btn" id="optCopy" type="button" data-i18n="opt_copy">Копировать</button>
+    </div>
+    <div class="tb-body">
+      <div class="opt-steps" id="optSteps"></div>
+      <div class="opt-bar"><div class="opt-bar-fill" id="optFill"></div></div>
+      <div class="tb-out" id="optTerm"></div>
+    </div>
+    <div class="m-actions">
+      <button class="btn" id="optClose" type="button" data-i18n="opt_hide">Скрыть</button>
     </div>
   </div>
 </div>
@@ -783,6 +956,40 @@ ru: {
   ag_can_do:"Что он умеет", ag_hint:"После инициализации пишите в чате, например:",
   ag_examples:["«сделай замер и объясни результат»","«какая локация сейчас быстрее?»","«когда лучше качать большие файлы?»","«поставь автопроверку каждые 30 минут»","«следи за router.local каждые 5 минут»"],
   greeting:"Привет! Чем могу помочь?", processing:"обрабатываю запрос", no_link:"⚠ нет связи с приложением",
+  run_details:"Ход запроса",
+  steps_n:n=>n+" "+(n%10===1&&n%100!==11?"шаг":(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?"шага":"шагов"),
+  disk_of:"из", disk_used:"занято", disk_rescan:"↻ пересканировать",
+  disk_start:"▶ старт", disk_stop:"■ стоп",
+  disk_stopped:"скан остановлен — результаты неполные",
+  disk_calculating:"вычисляю", disk_clearing_caches:"чищу кэши",
+  disk_clearing_trash:"опустошаю корзину", disk_clearing_go:"очищаю…",
+  disk_looking:"Ищу, что можно почистить…",
+  disk_largest:(n,s)=>"самый большой файл — "+n+" ("+s+")",
+  disk_sug_trash:s=>"Корзина хранит "+s+" того, что вы уже удалили.",
+  disk_sug_caches:s=>"Кэши занимают "+s+". Приложения пересоздадут их при необходимости.",
+  disk_sug_ok:"Значительного мусора нет — всё в порядке",
+  disk_clear_trash:"Очистить корзину", disk_clear_caches:"Очистить кэши",
+  disk_confirm_trash_t:"Опустошить корзину?",
+  disk_confirm_trash_b:"Всё содержимое корзины будет удалено безвозвратно. Продолжить?",
+  disk_confirm_caches_t:"Очистить кэши?",
+  disk_confirm_caches_b:"Будут удалены временные файлы (Temp и системные кэши). Приложения пересоздадут их сами. Продолжить?",
+  disk_cat_apps:"Приложения", disk_cat_docs:"Документы", disk_cat_downloads:"Загрузки",
+  disk_cat_photos:"Фото", disk_cat_music:"Музыка", disk_cat_videos:"Видео",
+  disk_cat_caches:"Кэши", disk_cat_system:"Система", disk_cat_trash:"Корзина", disk_cat_other:"Другое",
+  disk_optimize:"Оптимизировать систему", opt_open:"Открыть оптимизацию",
+  opt_running:(n,N)=>"Оптимизация: шаг "+n+" из "+N,
+  disk_opt_title:"Оптимизировать систему?",
+  disk_opt_text:"Сейчас будет запущена системная утилита Windows, которая чистит ваши данные. Будьте внимательны к тому, что вы удаляете. Потребуются права администратора — подтвердите запрос Windows (UAC).",
+  disk_opt_deep:"Глубокая очистка (ResetBase): после неё установленные обновления Windows нельзя будет удалить",
+  disk_opt_run:"Запустить",
+  opt_run_title:"Оптимизация системы", opt_done:"Готово", opt_err_title:"Ошибка оптимизации",
+  opt_done_note:"Готово. Рекомендуется перезагрузка Windows.", opt_hide:"Скрыть",
+  opt_cancel_btn:"Отменить", opt_copy:"Копировать", opt_copied:"Скопировано ✓",
+  opt_sec:"с", opt_min:"м",
+  opt_step1:"Анализ хранилища компонентов (до)",
+  opt_step2:"Очистка компонентов DISM (10–30 минут)",
+  opt_step3:"Очистка временных файлов (cleanmgr)",
+  opt_step4:"Анализ хранилища компонентов (после)",
   arch_export_title:"Экспорт архива", arch_import_title:"Загрузка архива",
   error_prefix:"Ошибка: ", file_saved:n=>"Файл сохранён: "+n, checking_file:"проверяю файл…",
   overlap_found:"Найдено пересечение с существующей историей",
@@ -847,6 +1054,40 @@ en: {
   ag_can_do:"What it can do", ag_hint:"After initialization, type in the chat, for example:",
   ag_examples:["“run a speed test and explain the result”","“which location is faster right now?”","“when is the best time to download large files?”","“set the auto-check to every 30 minutes”","“watch router.local every 5 minutes”"],
   greeting:"Hi! How can I help?", processing:"processing the request", no_link:"⚠ no connection to the app",
+  run_details:"Run details",
+  steps_n:n=>n+(n===1?" step":" steps"),
+  disk_of:"of", disk_used:"used", disk_rescan:"↻ Rescan",
+  disk_start:"▶ Start", disk_stop:"■ Stop",
+  disk_stopped:"scan stopped — results are partial",
+  disk_calculating:"Calculating", disk_clearing_caches:"clearing caches",
+  disk_clearing_trash:"emptying the Trash", disk_clearing_go:"clearing…",
+  disk_looking:"Looking for things you can clear",
+  disk_largest:(n,s)=>"your largest file is "+n+" at "+s,
+  disk_sug_trash:s=>"The Trash is holding "+s+" of things you've already deleted.",
+  disk_sug_caches:s=>"Caches are using "+s+". Apps rebuild them when they need them.",
+  disk_sug_ok:"Nothing worth clearing — all clean",
+  disk_clear_trash:"Empty Trash", disk_clear_caches:"Clear caches",
+  disk_confirm_trash_t:"Empty the Trash?",
+  disk_confirm_trash_b:"Everything in the Trash will be permanently deleted. Continue?",
+  disk_confirm_caches_t:"Clear caches?",
+  disk_confirm_caches_b:"Temporary files (Temp and system caches) will be deleted. Apps rebuild them when needed. Continue?",
+  disk_cat_apps:"Apps", disk_cat_docs:"Documents", disk_cat_downloads:"Downloads",
+  disk_cat_photos:"Photos", disk_cat_music:"Music", disk_cat_videos:"Videos",
+  disk_cat_caches:"Caches", disk_cat_system:"System", disk_cat_trash:"Trash", disk_cat_other:"Other",
+  disk_optimize:"Optimize system", opt_open:"Open optimization",
+  opt_running:(n,N)=>"Optimizing: step "+n+" of "+N,
+  disk_opt_title:"Optimize the system?",
+  disk_opt_text:"The Windows system utility will now run and clean up your data. Be careful about what you delete. Administrator rights are required — confirm the Windows (UAC) prompt.",
+  disk_opt_deep:"Deep cleanup (ResetBase): installed Windows updates can no longer be uninstalled afterwards",
+  disk_opt_run:"Run",
+  opt_run_title:"System optimization", opt_done:"Done", opt_err_title:"Optimization error",
+  opt_done_note:"Done. A Windows restart is recommended.", opt_hide:"Hide",
+  opt_cancel_btn:"Cancel", opt_copy:"Copy", opt_copied:"Copied ✓",
+  opt_sec:"s", opt_min:"m",
+  opt_step1:"Analyzing component store (before)",
+  opt_step2:"DISM component cleanup (10–30 min)",
+  opt_step3:"Temp file cleanup (cleanmgr)",
+  opt_step4:"Analyzing component store (after)",
   arch_export_title:"Archive export", arch_import_title:"Archive import",
   error_prefix:"Error: ", file_saved:n=>"File saved: "+n, checking_file:"checking the file…",
   overlap_found:"Found an overlap with the existing history",
@@ -1656,44 +1897,127 @@ function renderProc(){
 let agentSt = null, chatBusy = false;
 let chatStartedAt = 0, initStartedAt = 0;
 
-// глиф Agent Progress: 9 ячеек с волной задержек (порт starc007/agent-progress)
-const AP_CELLS = Array.from({length:9}, (_,i) =>
-  `<i style="--d:${(i*0.14).toFixed(2)}s"></i>`).join("");
-(function initGlyphs(){
-  document.querySelectorAll("[data-ap-glyph]").forEach(el => el.innerHTML = AP_CELLS);
-})();
+// иконки шагов «Хода запроса» (порт «agent status», uiNerd): сверкáние — мысль,
+// документ — чтение/архив, терминал — инструменты, глаз — наблюдение
+const AS_ICON_SPARK = '<svg width="13" height="13" viewBox="0 0 14 14"><path d="M7 1 L8.2 5.8 L13 7 L8.2 8.2 L7 13 L5.8 8.2 L1 7 L5.8 5.8 Z" fill="currentColor"/></svg>';
+const AS_ICON_DOC = '<svg width="13" height="13" viewBox="0 0 14 14"><path d="M3 1.5 H9 L11.5 4 V12.5 H3 Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 1.5 V4 H11.5 M5 7 H9.5 M5 9.5 H9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
+const AS_ICON_TERM = '<svg width="13" height="13" viewBox="0 0 14 14"><rect x="1.5" y="2.5" width="11" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4 5.5 L6 7 L4 8.5 M7.5 8.5 H10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const AS_ICON_EYE = '<svg width="13" height="13" viewBox="0 0 14 14"><path d="M1.5 7 C3 4.2 5 3 7 3 C9 3 11 4.2 12.5 7 C11 9.8 9 11 7 11 C5 11 3 9.8 1.5 7 Z" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="7" cy="7" r="1.8" fill="currentColor"/></svg>';
+const AS_CHEV = '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M1.5 3.5 L5 7 L8.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function asIcon(name){
+  const s = name.toLowerCase();
+  if (s.includes("наблюд") || s.includes("следи") || s.includes("watch")) return AS_ICON_EYE;
+  if (s.includes("читаю") || s.includes("read") || s.includes("сводк") || s.includes("digest") ||
+      s.includes("архив") || s.includes("archive") || s.includes("экспорт") || s.includes("export") ||
+      s.includes("загруз") || s.includes("import")) return AS_ICON_DOC;
+  if (s.includes("инструмент") || s.includes("tool") || s.includes("пинг") || s.includes("ping") ||
+      s.includes("замер") || s.includes("speed") || s.includes("check") || s.includes("интервал") ||
+      s.includes("interval") || s.includes("границ") || s.includes("zone") || s.includes("частот") ||
+      s.includes("rate") || s.includes("объём") || s.includes("size")) return AS_ICON_TERM;
+  return AS_ICON_SPARK;
+}
+// длительности шагов: ключ «индекс·имя» → {start, dur}; активные тикают, done — замирают
+const stageClock = new Map();
+let asUserToggled = false, asAutoOpened = false;
+function setAsOpen(v){
+  const p = $("asPill"), c = $("asCard");
+  if (p) p.classList.toggle("open", v);
+  if (c) c.style.display = v ? "block" : "none";
+}
+// бабл вставляется динамически — ловим клики по пилюле делегированно
+document.addEventListener("click", e => {
+  const pill = e.target.closest("#asPill");
+  if (pill){ asUserToggled = true; setAsOpen(!pill.classList.contains("open")); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const pill = e.target.closest ? e.target.closest("#asPill") : null;
+  if (pill){ e.preventDefault(); pill.click(); }
+});
 
 const fmtElapsed = s => {
   const u = l10n().el;
   return s >= 60 ? Math.floor(s/60) + u[0] + (s%60).toFixed(1) + u[1] : s.toFixed(1) + u[1];
 };
 
-// один таймер на всё: время инициализации и время «думаю» в чате
+// один таймер на всё: время инициализации, «думаю» в чате и оптимизация
 setInterval(() => {
   const now = performance.now();
   if (initStartedAt) $("loadTime").textContent = fmtElapsed((now - initStartedAt)/1000);
   if (chatBusy && chatStartedAt){
-    const el = $("apTime");
+    const el = $("asTime");
     if (el) el.textContent = fmtElapsed((now - chatStartedAt)/1000);
+    // живые длительности активных шагов тоже тикают здесь
+    if ($("asSteps")) updateThinkSteps();
+  }
+  // Tool Bash-таймер оптимизации
+  if (diskSt && diskSt.opt && diskSt.opt.running){
+    if (!optStartedMs) optStartedMs = Date.now();
+    const el = $("optTimer");
+    if (el) el.textContent = fmtOptDur(Math.round((Date.now() - optStartedMs) / 1000));
   }
 }, 100);
 
-// обновить бабл «думаю» из этапов бэкенда (label = активный шаг)
+// обновить статус-пилюлю «думаю» из этапов бэкенда (label = активный шаг)
 function updateThinkProgress(){
-  const labelEl = $("apLabel"), stepsEl = $("agentSteps");
+  const labelEl = $("asLabel");
   if (!chatBusy || !labelEl) return;
   const stages = (agentSt && agentSt.stages) || [];
   const active = stages.find(s => s.state === "active");
   if (active) labelEl.textContent = active.note
     ? active.name + " — " + active.note
     : active.name;
-  if (stepsEl){
-    stepsEl.innerHTML = stages
-      .filter(s => s.name !== "готово" && s.name !== "done" && s.state === "done")
-      .map(s => {
-        const note = s.note ? " — " + esc(s.note.slice(0, 60)) : "";
-        return '<div class="ap-step done">' + esc(s.name) + note + '</div>';
-      }).join("");
+  updateThinkSteps();
+}
+
+// карточка «Ход запроса»: строки-шаги с иконками, заметками и длительностями.
+// Полный рендер — только когда состав шагов меняется (иначе спиннер будет
+// перезапускаться); между тиками обновляем лишь таймер активного шага
+let asStepsSig = null;
+function updateThinkSteps(){
+  const stepsEl = $("asSteps");
+  if (!stepsEl || !agentSt) return;
+  const stages = agentSt.stages || [];
+  const now = performance.now();
+  const isDone = s => s.name === "готово" || s.name === "done";
+  const steps = stages.filter(s => !isDone(s));
+  steps.forEach((s, i) => {
+    const k = i + "·" + s.name;
+    let c = stageClock.get(k);
+    if (!c){ c = {start: s.state === "active" ? now : 0, dur: 0}; stageClock.set(k, c); }
+    else if (s.state === "active" && !c.start) c.start = now;
+    else if (s.state === "done" && c.start && !c.dur) c.dur = now - c.start;
+  });
+  const sig = steps.length + ";" + steps.map(s =>
+    s.name + "|" + s.state + "|" + (s.note || "")).join(";");
+  if (sig !== asStepsSig){
+    asStepsSig = sig;
+    stepsEl.innerHTML = steps.map((s, i) => {
+      const c = stageClock.get(i + "·" + s.name) || {dur: 0, start: 0};
+      const act = s.state === "active";
+      const meta = act
+        ? (c.start ? fmtElapsed((now - c.start)/1000) : "")
+        : (c.dur > 400 ? fmtElapsed(c.dur/1000) : "");
+      const note = s.note ? ' <span class="as-note">' + esc(s.note.slice(0, 60)) + "</span>" : "";
+      return '<div class="as-step' + (act ? " active" : "") + '">' +
+        '<span class="as-ico">' + (act ? '<span class="as-minispin"></span>' : asIcon(s.name)) + "</span>" +
+        '<span class="as-name">' + esc(s.name) + note + "</span>" +
+        (meta ? '<span class="as-meta">' + esc(meta) + "</span>" : "") +
+        "</div>";
+    }).join("");
+    $("asCount").textContent = t("steps_n", steps.length);
+    // как в ролике: пилюля одна, а карточка раскрывается сама, когда пошли шаги
+    if (!asUserToggled && !asAutoOpened && steps.length >= 2){
+      asAutoOpened = true;
+      setAsOpen(true);
+    }
+  } else {
+    const ai = steps.findIndex(s => s.state === "active");
+    if (ai >= 0){
+      const c = stageClock.get(ai + "·" + steps[ai].name);
+      const actEl = stepsEl.querySelector(".as-step.active .as-meta");
+      if (actEl && c && c.start) actEl.textContent = fmtElapsed((now - c.start)/1000);
+    }
   }
 }
 
@@ -1989,15 +2313,27 @@ async function sendChat(){
   chatStartedAt = performance.now();
   input.value = ""; input.disabled = true; $("chatSend").disabled = true;
   const log = $("chatLog");
+  // статус-пилюля «думаю» (порт «agent status», uiNerd): спиннер + метка +
+  // таймер + шеврон, ниже — раскрывающаяся карточка «Ход запроса»
+  stageClock.clear();
+  asUserToggled = false; asAutoOpened = false; asStepsSig = null;
   log.insertAdjacentHTML("beforeend",
     '<div class="bubble user">' + esc(q) + '</div>' +
-    '<div class="bubble bot think" id="chatThinking">' +
-      '<div class="agent-progress">' +
-        '<span class="ap-glyph">' + AP_CELLS + '</span>' +
-        '<span class="ap-label" id="apLabel">'+esc(t("processing"))+'</span>' +
-        '<span class="ap-time" id="apTime">' + esc(fmtElapsed(0)) + '</span>' +
+    '<div class="think" id="chatThinking">' +
+      '<div class="as-pill" id="asPill" role="button" tabindex="0">' +
+        '<span class="as-spin"></span>' +
+        '<span class="as-label" id="asLabel">'+esc(t("processing"))+'</span>' +
+        '<span class="as-time" id="asTime">' + esc(fmtElapsed(0)) + '</span>' +
+        '<span class="as-chev">' + AS_CHEV + '</span>' +
       '</div>' +
-      '<div class="agent-steps" id="agentSteps"></div>' +
+      '<div class="as-card" id="asCard">' +
+        '<div class="as-head">' +
+          '<span class="as-title">'+esc(t("run_details"))+'</span>' +
+          '<span class="as-count" id="asCount"></span>' +
+        '</div>' +
+        '<div class="as-steps" id="asSteps"></div>' +
+        '<div class="as-ticks"></div>' +
+      '</div>' +
     '</div>');
   chatToNew();
   // живой опрос этапов чаще тика страницы: метка и шаги обновляются на лету
@@ -2023,6 +2359,523 @@ async function sendChat(){
 }
 $("chatSend").addEventListener("click", sendChat);
 $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
+
+/* ── Диск: что чем занято (LED-матрица; порт storage scanner —
+   kshvbgde, x.com/kshvbgde/status/2120782192385355974) ───────────── */
+const DISK_COLORS = {apps:"#4f8ff7",docs:"#22d3ee",downloads:"#8b5cf6",photos:"#ec4899",
+  music:"#d946ef",videos:"#34d399",caches:"#f59e0b",system:"#94a3b8",trash:"#ef4444",other:"#64748b"};
+const DISK_ICONS = {apps:"📦",docs:"📘",downloads:"📥",photos:"🖼️",music:"🎼",
+  videos:"🎬",caches:"🧴",system:"⚙️",trash:"🗑️",other:"✨"};
+let diskSt = null, diskPollTimer = null, diskHoverKey = null, diskAnim = null;
+let diskView = null;                 // какой диск показываем (чипы)
+const diskCache = {};                // готовые результаты по томам
+let optClosed = false, optWasRunning = false; // окно оптимизации
+const fmtGB = b => { const g = b / 2**30; return (g >= 1000 ? g.toFixed(0) : g.toFixed(1)) + " GB"; };
+
+async function loadDisk(){
+  try{
+    const r = await fetch("/api/disk", {cache:"no-store"});
+    diskSt = await r.json();
+    renderDisk();
+  }catch(e){}
+  if (diskPollTimer) clearTimeout(diskPollTimer);
+  const busy = diskSt && (diskSt.scanning || diskSt.clearing || (diskSt.opt && diskSt.opt.running));
+  if (busy) diskPollTimer = setTimeout(loadDisk, 700);
+}
+
+function renderDisk(){
+  const s0 = diskSt;
+  if (!s0) return;
+  if (s0.done && s0.volume && (s0.cats || []).length){
+    diskCache[s0.volume] = {scanning:false, clearing:"", done:true, stopped:s0.stopped,
+      current:"", volume:s0.volume, total:s0.total, free:s0.free, used:s0.used,
+      progress:1, cats:s0.cats};
+  }
+  // вид: выбранный в чипах диск, если его результаты уже готовы;
+  // пока сканируется именно он — рисуем живое состояние
+  let s = s0;
+  if (diskView && diskView !== s0.volume && diskCache[diskView]){
+    s = Object.assign({}, diskCache[diskView], {drives:s0.drives, canOpt:s0.canOpt, opt:s0.opt, clearing:s0.clearing});
+  } else {
+    diskView = s0.volume;
+  }
+  $("diskUsed").textContent = fmtGB(s.used);
+  $("diskTotal").textContent = fmtGB(s.total);
+  // кнопки скана: во время скана — «стоп», иначе «старт» (он же rescan)
+  $("diskStop").style.display = s.scanning ? "" : "none";
+  $("diskStart").style.display = s.scanning ? "none" : "";
+  renderDiskDrives(s);
+  renderDiskSub(s);
+  renderDiskLegend(s);
+  renderDiskHint(s);
+  renderDiskOpt(s0.opt || s.opt);
+  if (diskAnim) diskAnim.setState(s);
+}
+
+function renderDiskDrives(s){
+  const el = $("diskDrives");
+  if (!el) return;
+  const ds = s.drives || [];
+  if (!ds.length){
+    el.style.display = "none";
+    return;
+  }
+  el.style.display = "";
+  el.innerHTML = ds.map(d => {
+    const cached = diskCache[d.root];
+    const size = cached ? fmtGB(cached.used) : (d.used ? fmtGB(d.used) : "");
+    return '<button class="disk-drive' + (d.root === s.volume ? " act" : "") + '" data-v="' + esc(d.root) + '">' +
+      esc(d.name) + (size ? ' <small>' + size + '</small>' : '') + '</button>';
+  }).join("");
+}
+
+function renderDiskSub(s){
+  const el = $("diskSub");
+  const path = s.current ? ' <span class="mono">' + esc(s.current) + "</span>" : "";
+  if (s.clearing === "caches") el.innerHTML = "<b>" + esc(t("disk_clearing_caches")) + "</b>" + path;
+  else if (s.clearing === "trash") el.innerHTML = "<b>" + esc(t("disk_clearing_trash")) + "</b>" + path;
+  else if (s.scanning) el.innerHTML = "<b>" + esc(t("disk_calculating")) + "</b>" + path;
+  else if (diskHoverKey){
+    const c = (s.cats || []).find(c => c.key === diskHoverKey);
+    if (!c) return;
+    const largest = c.largest ? " · " + esc(t("disk_largest", c.largest, fmtGB(c.largSz || 0))) : "";
+    el.innerHTML = "<b>" + DISK_ICONS[diskHoverKey] + " " + esc(t("disk_cat_" + diskHoverKey)) +
+      "</b> " + fmtGB(c.bytes) + largest;
+  } else if (s.stopped) el.innerHTML = "<b>" + esc(t("disk_stopped")) + "</b>";
+  else el.innerHTML = "";
+}
+
+let diskLegendSig = "";
+function renderDiskLegend(s){
+  const el = $("diskLegend");
+  if (!el) return;
+  const sig = (s.cats || []).map(c => c.key + ":" + c.bytes).join(";") + "|" + (diskHoverKey || "");
+  if (sig === diskLegendSig) return;
+  diskLegendSig = sig;
+  el.innerHTML = (s.cats || []).map(c =>
+    '<div class="disk-cat' + (diskHoverKey === c.key ? " hl" : "") + '" data-k="' + c.key + '">' +
+    '<span class="ico">' + DISK_ICONS[c.key] + "</span>" +
+    '<span class="nm">' + esc(t("disk_cat_" + c.key)) + "</span>" +
+    '<span class="sz">' + fmtGB(c.bytes) + "</span></div>").join("");
+}
+
+function setDiskHover(k){
+  if (diskHoverKey === k) return;
+  diskHoverKey = k;
+  document.querySelectorAll("#diskLegend .disk-cat").forEach(el =>
+    el.classList.toggle("hl", el.dataset.k === k));
+  renderDiskSub();
+  renderDiskLegend();
+  if (diskAnim) diskAnim.setHover(k);
+}
+
+function renderDiskHint(s){
+  const spin = $("diskHintSpin"), txt = $("diskHintText"), btn = $("diskClearBtn"), ob = $("diskOptBtn");
+  const opt = s.opt;
+  btn.style.display = "none";
+  ob.style.display = s.canOpt ? "" : "none";
+  ob.dataset.mode = (opt && opt.running) ? "open" : "confirm";
+  ob.textContent = (opt && opt.running) ? t("opt_open") : t("disk_optimize");
+  if (opt && opt.running){
+    spin.style.display = "";
+    txt.textContent = t("opt_running", opt.step, opt.steps);
+    return;
+  }
+  if (s.clearing){ spin.style.display = ""; txt.textContent = t("disk_clearing_go"); return; }
+  if (s.scanning){ spin.style.display = ""; txt.textContent = t("disk_looking"); return; }
+  spin.style.display = "none";
+  const bytesOf = k => ((s.cats || []).find(c => c.key === k) || {bytes: 0}).bytes;
+  if (bytesOf("trash") >= 2**30){
+    txt.textContent = t("disk_sug_trash", fmtGB(bytesOf("trash")));
+    btn.textContent = t("disk_clear_trash");
+    btn.dataset.target = "trash";
+    btn.style.display = "";
+  } else if (bytesOf("caches") >= 2**30){
+    txt.textContent = t("disk_sug_caches", fmtGB(bytesOf("caches")));
+    btn.textContent = t("disk_clear_caches");
+    btn.dataset.target = "caches";
+    btn.style.display = "";
+  } else txt.textContent = t("disk_sug_ok");
+}
+
+// оверлей «Оптимизации системы» (порт Tool Bash, chatcn): статус-глиф,
+// живой таймер, Отменить, стрим лога с кареткой, копирование
+let optStartedMs = 0;
+const fmtOptDur = s => s < 60 ? s + "\u00a0" + t("opt_sec") :
+  Math.floor(s / 60) + "\u00a0" + t("opt_min") + " " + (s % 60) + "\u00a0" + t("opt_sec");
+const OPT_SPIN = '<svg class="opt-spin" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.25" stroke="currentColor" stroke-opacity="0.2" stroke-width="1.5"/><path d="M8 1.75A6.25 6.25 0 0 1 14.25 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+const OPT_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m4.5 12.75 3.23 3.23a2.5 2.5 0 0 0 3.54 0l8.48-8.48"/></svg>';
+const OPT_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg>';
+
+function renderDiskOpt(opt){
+  const modal = $("optModal");
+  if (!opt || (!opt.running && !opt.done && !opt.err)){
+    modal.classList.remove("show");
+    optWasRunning = false;
+    return;
+  }
+  if (opt.running && !optWasRunning){
+    optClosed = false;          // новый запуск — окно открывается само
+    optStartedMs = Date.now();
+  }
+  optWasRunning = !!opt.running;
+  const steps = opt.steps || 4;
+  const titles = [t("opt_step1"), t("opt_step2"), t("opt_step3"), t("opt_step4")];
+  $("optSteps").innerHTML = titles.slice(0, steps).map((title, i) => {
+    const n = i + 1;
+    const cls = opt.err ? "" : opt.done || n < opt.step ? "done" :
+      n === opt.step && opt.running ? "act" : "";
+    return '<div class="opt-step ' + cls + '"><i></i><span>' + esc(title) + "</span></div>";
+  }).join("");
+  const pct = opt.done ? 100 :
+    Math.min(100, Math.round((Math.max(0, (opt.step || 1) - 1) + (opt.pct || 0) / 100) / steps * 100));
+  $("optFill").style.width = pct + "%";
+  // терминал: лог серым (Tool Bash монохромен), финал и ошибки — цветом
+  const term = $("optTerm");
+  const lines = (opt.log || []).map(l => esc(l));
+  if (opt.err) lines.push('<span class="opt-errline">✗ ' + esc(opt.err) + "</span>");
+  if (opt.done && !opt.err) lines.push('<span class="opt-okline">✔ ' + esc(t("opt_done_note")) + "</span>");
+  term.innerHTML = lines.join("\n") + (opt.running ? '<span class="tb-caret"></span>' : "");
+  term.scrollTop = 1e6;
+  // шапка: глиф состояния + таймер + кнопки
+  const st = $("optStatus");
+  st.className = "tb-status " + (opt.err ? "err" : opt.done ? "done" : "running");
+  st.innerHTML = opt.err ? OPT_X : opt.done ? OPT_CHECK : OPT_SPIN;
+  $("optStop").style.display = opt.running ? "" : "none";
+  $("optCopy").style.display = (opt.log || []).length ? "" : "none";
+  if (opt.running && optStartedMs){
+    $("optTimer").textContent = fmtOptDur(Math.round((Date.now() - optStartedMs) / 1000));
+  }
+  $("optTitle").textContent =
+    opt.err ? t("opt_err_title") :
+    opt.done ? t("opt_done") : t("opt_run_title");
+  // окно открыто, пока идёт работа или его не закрыли руками
+  if (opt.running || opt.err || modal.classList.contains("show")){
+    if (!optClosed) modal.classList.add("show");
+  }
+}
+
+// движок полотна: сетка точек, мерцание, sweep скана, наведение, частицы
+(function initDiskFx(){
+  const canvas = $("diskCanvas"), card = $("diskCard");
+  const ctx = canvas.getContext("2d");
+  const DOT = 9, R = 1.7, PAD = 7, GAP = 3, H = 76;
+  let W = 0, cols = 0, rows = 0;
+  let phase, speed, base;
+  let st = null, hoverK = null, shown = 0;
+  let particles = [];
+  let onScreen = true, raf = 0, prevT = 0;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+
+  function resize(){
+    const w = card.clientWidth - 44; // паддинги .card 22×2
+    if (w <= 0) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = w;
+    canvas.style.width = w + "px";
+    canvas.style.height = H + "px";
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    buildDots();
+    draw(performance.now());
+  }
+
+  function buildDots(){
+    cols = Math.max(1, Math.floor((W - PAD * 2) / DOT));
+    rows = Math.max(1, Math.floor((H - PAD * 2) / DOT));
+    const n = cols * rows;
+    phase = new Float32Array(n);
+    speed = new Float32Array(n);
+    base = new Float32Array(n);
+    let seed = 20261113;
+    const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    for (let i = 0; i < n; i++){
+      phase[i] = rnd() * Math.PI * 2;
+      speed[i] = 0.5 + rnd() * 1.6;
+      base[i] = 0.3 + rnd() * 0.7;
+    }
+  }
+
+  // раскладка сегментов: ширина ∝ размеру; при скане занят только
+  // передний край шириной shown
+  function layout(){
+    const cats = ((st && st.cats) || []).filter(c => c.bytes > 0 && DISK_COLORS[c.key]);
+    const total = cats.reduce((a, c) => a + c.bytes, 0);
+    const iw = W - PAD * 2;
+    const visible = shown * iw;
+    let x = PAD;
+    const segs = [];
+    for (const c of cats){
+      const w = total > 0 ? c.bytes / total * visible : 0;
+      if (w < 2) continue; // микросегменты пропускаем, зазор не рисуем
+      segs.push({key: c.key, x, w: Math.max(w - GAP, 2)});
+      x += w;
+    }
+    return {segs, visible};
+  }
+
+  // редкие яркие «вспышки» точки, детерминированные по времени
+  const hashPop = (i, t) => {
+    const k = ((i * 7919 + Math.floor(t * 2.4) * 104729) * 2654435761) >>> 0;
+    return k / 4294967296 > 0.986;
+  };
+
+  function draw(tms){
+    ctx.clearRect(0, 0, W, H);
+    if (!W || !rows) return;
+    const t = tms / 1000;
+    const {segs, visible} = layout();
+    const limit = PAD + visible;
+    // подложка-«кирпич»: лёгкий тон цвета под точками каждого сегмента
+    for (const sg of segs){
+      ctx.globalAlpha = hoverK && sg.key !== hoverK ? 0.02 : 0.055;
+      ctx.fillStyle = DISK_COLORS[sg.key];
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(sg.x, PAD, sg.w, H - PAD * 2, 3);
+      else ctx.rect(sg.x, PAD, sg.w, H - PAD * 2);
+      ctx.fill();
+    }
+    for (let ci = 0; ci < cols; ci++){
+      const x = PAD + ci * DOT;
+      let key = null;
+      for (const sg of segs)
+        if (x >= sg.x && x <= sg.x + sg.w + GAP){ key = sg.key; break; }
+      const lit = key && x < limit;
+      for (let ri = 0; ri < rows; ri++){
+        const y = PAD + ri * DOT;
+        const i = ci * rows + ri;
+        let a, color;
+        if (lit){
+          color = DISK_COLORS[key];
+          if (reduce.matches){
+            a = base[i] * 0.8;
+          } else {
+            const tw = 0.5 + 0.5 * Math.sin(t * speed[i] * 2 + phase[i]);
+            a = base[i] * (0.22 + 0.78 * tw * tw);
+            if (hashPop(i, t)) a = 1;
+          }
+          if (hoverK && key !== hoverK) a *= 0.16;
+        } else {
+          color = "#8d8d93";
+          a = 0.07;
+        }
+        ctx.globalAlpha = a;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, R, 0, 6.2832);
+        ctx.fill();
+      }
+    }
+    // рамка наведённого сегмента — как подсветка в референсе
+    if (hoverK){
+      for (const sg of segs){
+        if (sg.key !== hoverK) continue;
+        ctx.globalAlpha = 0.85;
+        ctx.strokeStyle = DISK_COLORS[sg.key];
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sg.x - 2.5, PAD - 2.5, sg.w + 5, H - PAD * 2 + 5, 4);
+        else ctx.rect(sg.x - 2.5, PAD - 2.5, sg.w + 5, H - PAD * 2 + 5);
+        ctx.stroke();
+        ctx.globalAlpha = 0.18;
+        ctx.stroke(); // второй проход — лёгкое свечение
+      }
+    }
+    tickParticles();
+    ctx.globalAlpha = 1;
+  }
+
+  // осыпание сегмента при очистке: точки падают с «гравитацией»
+  function burst(key){
+    const {segs} = layout();
+    const sg = segs.find(s => s.key === key);
+    if (!sg) return;
+    const color = DISK_COLORS[key];
+    const c0 = Math.max(0, Math.ceil((sg.x - PAD) / DOT));
+    const c1 = Math.min(cols - 1, Math.ceil((sg.x + sg.w - PAD) / DOT));
+    for (let ci = c0; ci <= c1; ci++){
+      for (let ri = 0; ri < rows; ri++){
+        if (Math.random() > 0.5) continue;
+        particles.push({
+          x: PAD + ci * DOT, y: PAD + ri * DOT,
+          vx: (Math.random() - 0.5) * 26,
+          vy: -(10 + Math.random() * 70),
+          life: 0.7 + Math.random() * 0.8, age: 0, color,
+        });
+      }
+    }
+    if (particles.length > 900) particles.splice(0, particles.length - 900);
+  }
+
+  function tickParticles(){
+    if (!particles.length || reduce.matches) { particles = []; return; }
+    const dt = Math.min(0.05, prevT ? (performance.now() - prevT) / 1000 : 0.016);
+    for (let i = particles.length - 1; i >= 0; i--){
+      const p = particles[i];
+      p.age += dt;
+      if (p.age >= p.life || p.y > H + 8){ particles.splice(i, 1); continue; }
+      p.vy += 340 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      ctx.globalAlpha = Math.max(0, 1 - p.age / p.life);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, R, 0, 6.2832);
+      ctx.fill();
+    }
+  }
+
+  function frame(tms){
+    raf = 0;
+    prevT = tms;
+    const target = st ? (st.done ? 1 : Math.min(0.985, st.progress || 0)) : 0;
+    if (target < shown - 0.02) shown = target; // новый скан — мгновенный сброс
+    else shown += (target - shown) * 0.07;     // плавный sweep вперёд
+    draw(tms);
+    if (onScreen) raf = requestAnimationFrame(frame);
+  }
+
+  function wake(){
+    if (!raf && onScreen) raf = requestAnimationFrame(frame);
+  }
+
+  canvas.addEventListener("pointermove", e => {
+    if (!st || !st.done) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const {segs} = layout();
+    const sg = segs.find(s => x >= s.x - 1 && x <= s.x + s.w + GAP + 1);
+    setDiskHover(sg ? sg.key : null);
+  });
+  canvas.addEventListener("pointerleave", () => setDiskHover(null));
+
+  const ro = new ResizeObserver(() => { resize(); });
+  ro.observe(card);
+  const io = new IntersectionObserver(entries => {
+    onScreen = entries[0] ? entries[0].isIntersecting : true;
+    wake();
+  });
+  io.observe(canvas);
+
+  diskAnim = {
+    setState(s){ st = s; wake(); },
+    setHover(k){ hoverK = k; },
+    burst,
+    refresh: resize,
+  };
+  resize();
+  wake();
+})();
+
+$("diskLegend").addEventListener("pointerover", e => {
+  const row = e.target.closest(".disk-cat");
+  if (row) setDiskHover(row.dataset.k);
+});
+$("diskLegend").addEventListener("pointerleave", () => setDiskHover(null));
+
+$("diskDrives").addEventListener("click", e => {
+  const chip = e.target.closest(".disk-drive");
+  if (!chip) return;
+  const vol = chip.dataset.v;
+  if (diskCache[vol]){
+    diskView = vol; // результаты уже есть — просто переключаем вид
+    renderDisk();
+    return;
+  }
+  diskView = vol; // новый диск — запускаем скан
+  fetch("/api/disk/scan", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({volume: vol}),
+  }).then(loadDisk).catch(() => {});
+});
+
+$("diskStart").addEventListener("click", async () => {
+  try{
+    await fetch("/api/disk/scan", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({volume: diskView || ""}),
+    });
+  }catch(e){}
+  loadDisk();
+});
+$("diskStop").addEventListener("click", async () => {
+  try{ await fetch("/api/disk/stop", {method: "POST"}); }catch(e){}
+  loadDisk(); // подтягиваем частичный итог
+});
+
+// очистка кэшей/корзины и запуск оптимизации — только через подтверждение
+const diskModal = $("diskModal");
+let diskPending = null;
+$("diskClearBtn").addEventListener("click", () => {
+  const target = $("diskClearBtn").dataset.target;
+  if (!target) return;
+  diskPending = target;
+  $("dmTitle").textContent = t(target === "trash" ? "disk_confirm_trash_t" : "disk_confirm_caches_t");
+  $("dmText").textContent = t(target === "trash" ? "disk_confirm_trash_b" : "disk_confirm_caches_b");
+  $("dmDeepRow").style.display = "none";
+  $("dmOk").textContent = t(target === "trash" ? "disk_clear_trash" : "disk_clear_caches");
+  diskModal.classList.add("show");
+});
+$("diskOptBtn").addEventListener("click", () => {
+  if ($("diskOptBtn").dataset.mode === "open"){
+    optClosed = false; // работа идёт в фоне — reopen окна
+    renderDisk();
+    return;
+  }
+  diskPending = "optimize";
+  $("dmTitle").textContent = t("disk_opt_title");
+  $("dmText").textContent = t("disk_opt_text");
+  $("dmDeepRow").style.display = "";
+  $("dmOk").textContent = t("disk_opt_run");
+  diskModal.classList.add("show");
+});
+const closeDiskModal = () => { diskModal.classList.remove("show"); diskPending = null; };
+$("dmCancel").addEventListener("click", closeDiskModal);
+diskModal.addEventListener("click", e => { if (e.target === diskModal) closeDiskModal(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDiskModal(); });
+$("dmOk").addEventListener("click", async () => {
+  const target = diskPending;
+  const deep = target === "optimize" && $("dmDeep").checked;
+  closeDiskModal();
+  if (!target) return;
+  if (target === "optimize"){
+    try{
+      const r = await fetch("/api/disk/optimize", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({resetBase: deep}),
+      });
+      const d = await r.json();
+      if (d.ok) optClosed = false; // окно оптимизации откроется само
+    }catch(e){}
+    loadDisk();
+    return;
+  }
+  try{
+    await fetch("/api/disk/clear", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({target}),
+    });
+  }catch(e){}
+  if (diskAnim) diskAnim.burst(target); // точки осыпаются сразу
+  loadDisk();
+});
+$("optStop").addEventListener("click", async () => {
+  try{ await fetch("/api/disk/optimize/stop", {method: "POST"}); }catch(e){}
+  loadDisk();
+});
+$("optCopy").addEventListener("click", () => {
+  const text = ((diskSt && diskSt.opt && diskSt.opt.log) || []).join("\n");
+  navigator.clipboard?.writeText(text).then(() => {
+    const b = $("optCopy");
+    b.textContent = t("opt_copied");
+    setTimeout(() => { b.textContent = t("opt_copy"); }, 1500);
+  }).catch(() => {});
+});
+$("optClose").addEventListener("click", () => {
+  optClosed = true;
+  $("optModal").classList.remove("show");
+});
 
 /* ── опрос ───────────────────────────────────────────────────── */
 async function tick(){
@@ -2089,6 +2942,7 @@ window.addEventListener("resize", () => { if (st){ drawChart(); drawHours(); } }
 applyStatic();
 syncHoursUI();
 tick();
+loadDisk(); // карточка «Диск»: первый опрос (автоскан взводится на бэке)
 </script>
 </body>
 </html>

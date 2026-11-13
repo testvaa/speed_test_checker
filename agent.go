@@ -729,7 +729,12 @@ func agentSystemPrompt(lang string) string {
 			"Answer in English, briefly (2–6 sentences), friendly and to the point, no Markdown headings. " +
 			"The only source of facts is the numeric measurement digest given to you in a separate message. " +
 			"Inventing numbers, comparisons or conclusions not present in the digest is strictly forbidden; " +
-			"if data is missing — say so directly. Never write internal reasoning — " +
+			"if data is missing — say so directly. For informational questions (“when is the best time…”, " +
+			"“which location is faster…”) answer strictly from the digest; if it lacks the needed data, " +
+			"say honestly that there are not enough measurements yet and advise measuring regularly — " +
+			"enable auto-checks for at least an hour, e.g. every 15–30 minutes — after that you can " +
+			"answer more precisely. Do not mention tools, the digest, or app internals — speak simply " +
+			"about the measurement data. Never write internal reasoning — " +
 			"only the final answer. Actions are performed ONLY with tools, phrase map: " +
 			"“speed test / check now” → run_check; “ping <host>” → ping_host; " +
 			"“watch / monitor / keep an eye on <host> [every N minutes]” → watch_host; " +
@@ -740,20 +745,25 @@ func agentSystemPrompt(lang string) string {
 			"For such requests call the tool and restate its result; " +
 			"without calling a tool never write the words “done”, “started”, “stopped”."
 	}
-	return "Ты — встроенный ИИ-агент мониторинга сети в приложении SpeedTestTray. " +
-		"Отвечай на русском, кратко (2–6 предложений), дружелюбно и по делу, без Markdown-заголовков. " +
-		"Единственный источник фактов — числовая сводка замеров, данная тебе отдельным сообщением. " +
-		"Строго запрещено придумывать числа, сравнения и выводы, которых нет в сводке; " +
-		"если данных не хватает — прямо скажи об этом. Никогда не пиши внутренние рассуждения — " +
-		"только готовый ответ. Действия выполняются ТОЛЬКО инструментами, карта фраз: " +
-		"«замер скорости / проверь сейчас» → run_check; «пингуй <хост>» → ping_host; " +
-		"«следи / наблюдай / поставь на контроль / поставь задачу за <хост> [каждые N минут]» → watch_host; " +
-		"«останови / отмени / перестань следить [за <хост> / все наблюдения]» → unwatch_host или unwatch_all; " +
-		"«сохрани архив» → export_archive; «загрузи архив <путь>» → import_archive; " +
-		"«поставь период N минут» → set_interval; «объём теста» → set_download_mb / set_upload_mb; " +
-		"«границы плохо/хорошо» → set_limits; «частота обновления графика» → set_net_rate. " +
-		"Для таких просьб вызывай инструмент и пересказывай его результат; " +
-		"без вызова инструмента слов «готово», «запущено», «остановлено» не пиши."
+		return "Ты — встроенный ИИ-агент мониторинга сети в приложении SpeedTestTray. " +
+			"Отвечай на русском, кратко (2–6 предложений), дружелюбно и по делу, без Markdown-заголовков. " +
+			"Единственный источник фактов — числовая сводка замеров, данная тебе отдельным сообщением. " +
+			"Строго запрещено придумывать числа, сравнения и выводы, которых нет в сводке; " +
+			"если данных не хватает — прямо скажи об этом. Информационные вопросы («когда лучше…», " +
+			"«какая локация быстрее…») отвечай строго по сводке; если нужных данных в ней нет — " +
+			"честно скажи, что измерений пока мало, и посоветуй измерять регулярно: включить " +
+			"автопроверку хотя бы на час, например каждые 15–30 минут, — тогда можно будет " +
+			"ответить точнее. Не упоминай инструменты, сводку и внутреннее устройство — " +
+			"говори просто о данных измерений. Никогда не пиши внутренние рассуждения — " +
+			"только готовый ответ. Действия выполняются ТОЛЬКО инструментами, карта фраз: " +
+			"«замер скорости / проверь сейчас» → run_check; «пингуй <хост>» → ping_host; " +
+			"«следи / наблюдай / поставь на контроль / поставь задачу за <хост> [каждые N минут]» → watch_host; " +
+			"«останови / отмени / перестань следить [за <хост> / все наблюдения]» → unwatch_host или unwatch_all; " +
+			"«сохрани архив» → export_archive; «загрузи архив <путь>» → import_archive; " +
+			"«поставь период N минут» → set_interval; «объём теста» → set_download_mb / set_upload_mb; " +
+			"«границы плохо/хорошо» → set_limits; «частота обновления графика» → set_net_rate. " +
+			"Для таких просьб вызывай инструмент и пересказывай его результат; " +
+			"без вызова инструмента слов «готово», «запущено», «остановлено» не пиши."
 }
 
 // Chat отправляет вопрос модели, вернув обновлённую историю диалога.
@@ -819,7 +829,8 @@ func (a *Agent) Chat(question string) ([]chatMsg, error) {
 			return a.Msgs(), err
 		}
 		if len(msg.ToolCalls) == 0 {
-			if iter == 0 && !toolUsed && (actionIntent.MatchString(question) || actionWords.MatchString(msg.Content)) {
+			if iter == 0 && !toolUsed && !infoIntent.MatchString(question) &&
+				(actionIntent.MatchString(question) || actionWords.MatchString(msg.Content)) {
 				a.setStage(T("st_clarify"), "active", "")
 				// форс-вызов на чистом контексте: история диалога тянет
 				// маленькую модель к «знакомому» run_check, поэтому в wire
@@ -829,9 +840,18 @@ func (a *Agent) Chat(question string) ([]chatMsg, error) {
 				if err2 == nil && len(msg2.ToolCalls) > 0 {
 					msg = msg2
 				} else {
-					// даже форс не помог — честный отказ вместо выдуманного успеха
+					// даже форс не помог — обычно это не «плохая команда», а
+					// вопрос, на который пока не хватает данных: даём модели
+					// честно ответить по сводке; шаблонный отказ — последний
+					// рубеж, если и это не сработало
 					a.setStage(step, "done", "")
-					final = T("ag_refusal")
+					honest := append(wire[:3:3], wire[len(wire)-1])
+					honest = append(honest, agentToolMsg{"role": "user", "content": T("ag_honest_nudge")})
+					if m3, err3 := a.callLLM(baseURL, honest, ""); err3 == nil && strings.TrimSpace(m3.Content) != "" {
+						final = sanitizeFinal(m3.Content)
+					} else {
+						final = T("ag_refusal")
+					}
 					break
 				}
 			}
@@ -884,6 +904,12 @@ var actionIntent = regexp.MustCompile(`(?i)^((давай\s+)?(пингуй|сл�
 // финальный ответ содержит их, а инструмент за запрос ни разу не вызван,
 // модель «рассказала» о действии словами — нужен повтор с required
 var actionWords = regexp.MustCompile(`(?i)(инструмент|запус|запущ|останов|отмен|выполн|измен|сохран|начат|закрыт|активир|\btool\b|runn|\bstart|\bstop|\bcancel|\bdone|complet|\bsaved|\bimport|\bexport|chang)`)
+
+// infoIntent — вопрос о данных, а не просьба действовать: «когда лучше…»,
+// «какая локация…». На вопросы форс-вызов инструмента не нужен — достаточно
+// честного ответа по сводке (хватит данных или нет); шаблон «переформулируйте»
+// на такие вопросы не отвечает.
+var infoIntent = regexp.MustCompile(`(?i)^(когда|как|какой|какая|какие|каких|где|куда|сколько|почему|зачем|что|стоит\s+ли|можно\s+ли|how|what|when|where|which|why|is|are|should|can)\b`)
 
 // parseArgs разбирает строку аргументов tool-вызова (JSON) в карту.
 func parseArgs(s string) map[string]any {
@@ -1519,6 +1545,35 @@ func buildDigest(history []dashEntry, traffic TrafficStore, bad, good float64, m
 		if !first && hn[bh] != hn[wh] {
 			fmt.Fprintln(&b, fmt.Sprintf(T("dg_hours"), bh, bestv, wh, worstv))
 			ins = append(ins, fmt.Sprintf(T("dg_hours_ins"), bh, bestv, wh, worstv))
+		}
+	}
+
+	// полная почасовая картина: чтобы агент мог ответить на «когда лучше
+	// качать большие файлы», а не только назвать два крайних часа.
+	// Публикуем при достатке данных: ≥8 замеров за неделю и ≥4 часа
+	if nW >= 8 {
+		var hsum [24]float64
+		var hn [24]int
+		for i := range history {
+			e := &history[i]
+			if e.Err != "" || e.TS.Before(week) {
+				continue
+			}
+			hsum[e.TS.Hour()] += e.Down
+			hn[e.TS.Hour()]++
+		}
+		var hb strings.Builder
+		hours := 0
+		for h := 0; h < 24; h++ {
+			if hn[h] > 0 {
+				fmt.Fprintf(&hb, "; %02d:00 ↓%.0f (%d)", h, hsum[h]/float64(hn[h]), hn[h])
+				hours++
+			}
+		}
+		if hours >= 4 {
+			b.WriteString(T("dg_hours_intro"))
+			b.WriteString(hb.String())
+			b.WriteString("\n")
 		}
 	}
 

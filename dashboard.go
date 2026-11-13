@@ -74,10 +74,11 @@ type Dashboard struct {
 	phaseFrac  float64
 	checkStart time.Time
 
-	proc  *ProcNet  // «кто потребляет интернет» для /api/procnet
-	agent *Agent    // ИИ-агент (инициализация + чат)
-	net   *NetMon   // монитор трафика (строка traffic архива)
-	watch *WatchMon // фоновые наблюдения за хостами
+	proc  *ProcNet     // «кто потребляет интернет» для /api/procnet
+	agent *Agent       // ИИ-агент (инициализация + чат)
+	net   *NetMon      // монитор трафика (строка traffic архива)
+	watch *WatchMon    // фоновые наблюдения за хостами
+	disk  *DiskScanner // сканер занятого места для карточки «Диск»
 
 	archMu sync.Mutex
 	archSt archStatus // экспорт/импорт архива (одна операция за раз)
@@ -112,6 +113,7 @@ func NewDashboard(cfg *Config, histPath string) *Dashboard {
 		goodMbps:    cfg.GoodMbps,
 		netRateMs:   nearestNetRateMs(cfg.NetRateMs),
 		proc:        NewProcNet(),
+		disk:        NewDiskScanner(),
 	}
 	if data, err := os.ReadFile(histPath); err == nil {
 		_ = json.Unmarshal(data, &d.history) // повреждённый файл — без истории
@@ -168,6 +170,12 @@ func (d *Dashboard) Start() {
 		mux.HandleFunc("/api/archive/import", d.serveArchiveImport)
 		mux.HandleFunc("/api/archive/status", d.serveArchiveStatus)
 		mux.HandleFunc("/api/history/clear", d.serveHistoryClear)
+		mux.HandleFunc("/api/disk", d.serveDisk)
+		mux.HandleFunc("/api/disk/scan", d.serveDiskScan)
+		mux.HandleFunc("/api/disk/stop", d.serveDiskStop)
+		mux.HandleFunc("/api/disk/clear", d.serveDiskClear)
+		mux.HandleFunc("/api/disk/optimize", d.serveDiskOptimize)
+		mux.HandleFunc("/api/disk/optimize/stop", d.serveDiskOptimizeStop)
 		// DNS-rebinding: слушаем только 127.0.0.1, но сторонний сайт может
 		// резолвить свой домен на 127.0.0.1 и слать запросы из браузера —
 		// принимаем только ожидаемый Host

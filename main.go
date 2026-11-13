@@ -32,7 +32,17 @@ type app struct {
 func main() {
 	once := flag.Bool("once", false, T("flag_once"))
 	netmon := flag.Bool("netmon", false, T("flag_netmon"))
+	optimize := flag.Bool("optimize", false, "run the system optimization helper (windows, elevated)")
+	optLog := flag.String("optlog", "", "optimization helper log file")
+	optReset := flag.Bool("resetbase", false, "add DISM /ResetBase to the optimization cleanup")
 	flag.Parse()
+
+	if *optimize {
+		// помощник «Оптимизации системы»: запускается дашбордом с правами
+		// администратора, работает отдельно и завершается после очистки
+		runOptimizeHelper(*optLog, *optReset)
+		return
+	}
 
 	cfg, cfgPath := LoadConfig(!*once && !*netmon)
 	SetLang(cfg.Lang)
