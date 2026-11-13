@@ -77,12 +77,22 @@ func TestDiskCatKeysStable(t *testing.T) {
 	}
 }
 
-// чистая защита корня тома: очистка корня недопустима
+// чистая защита корня тома: очистка корня недопустима. Проверяется на
+// любой ОС через isVolumeRootFor — filepath.VolumeName на unix пуст.
 func TestIsVolumeRoot(t *testing.T) {
-	if !isVolumeRoot(`C:\`) || !isVolumeRoot(`c:\\`) {
+	if !isVolumeRootFor("windows", `C:\`) || !isVolumeRootFor("windows", `c:\`) {
 		t.Fatalf("windows: C:\\ не распознан как корень")
 	}
-	if isVolumeRoot(`C:\Users`) {
+	if isVolumeRootFor("windows", `C:\Users`) {
 		t.Fatalf("windows: C:\\Users не корень")
+	}
+	if isVolumeRootFor("windows", `D:\data\`) {
+		t.Fatalf("windows: D:\\data\\ не корень")
+	}
+	if !isVolumeRootFor("linux", "/") || !isVolumeRootFor("darwin", "/") {
+		t.Fatalf("unix: / не распознан как корень")
+	}
+	if isVolumeRootFor("linux", "/home") {
+		t.Fatalf("unix: /home не корень")
 	}
 }

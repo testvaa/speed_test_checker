@@ -876,13 +876,25 @@ func categorize(goos string, rel []string, isSys bool) string {
 
 // isVolumeRoot — защита от очистки корня тома (на всякий случай: путь
 // всё равно приходит только из белого списка cacheDirs).
-func isVolumeRoot(dir string) bool {
+// isVolumeRootFor — чистая версия с явной ОС: filepath.VolumeName на unix
+// всегда пуст, поэтому Windows-путь «C:\» распознаётся вручную — иначе
+// тест не живёт на CI с linux/macOS.
+func isVolumeRootFor(goos, dir string) bool {
 	dir = filepath.Clean(dir)
-	if runtime.GOOS != "windows" {
+	if goos != "windows" {
 		return dir == "/" || dir == "."
 	}
-	vol := filepath.VolumeName(dir)
-	return vol != "" && strings.EqualFold(dir, vol+`\`)
+	if len(dir) == 2 && dir[1] == ':' {
+		return true // «C:»
+	}
+	if len(dir) == 3 && dir[1] == ':' && (dir[2] == '\\' || dir[2] == '/') {
+		return true // «C:\»
+	}
+	return false
+}
+
+func isVolumeRoot(dir string) bool {
+	return isVolumeRootFor(runtime.GOOS, dir)
 }
 
 // clearDirContents удаляет содержимое папки, не трогая саму папку.
