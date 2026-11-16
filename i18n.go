@@ -246,9 +246,6 @@ var i18nTable = map[string][2]string{
 	"ag_refusal":         {"Команда похожа на действие, но вызвать инструмент не получилось. Попробуйте переформулировать: «пингуй <хост>», «следи за <хост> каждые N минут», «останови наблюдение за <хост>», «останови все наблюдения».", "The command looks like an action, but the tool could not be called. Try rephrasing: “ping <host>”, “watch <host> every N minutes”, “stop watching <host>”, “stop all watches”."},
 	"ag_honest_nudge":    {"Инструмент вызвать не удалось. Ответь на вопрос пользователя честно и кратко, строго по данным сводки измерений: если данных не хватает, так и скажи — измерений пока мало — и посоветуй измерять регулярно: включить автопроверку хотя бы на час, например каждые 15–30 минут, тогда можно будет ответить точнее. Не выдумывай числа и не упоминай инструменты и внутреннее устройство приложения.", "The tool call failed. Answer the user honestly and briefly, strictly from the measurement digest: if the data is insufficient, say so directly — there are not enough measurements yet — and advise measuring regularly: enable auto-checks for at least an hour, e.g. every 15–30 minutes, after which you can answer more precisely. Do not invent numbers and do not mention tools or app internals."},
 	"dg_hours_intro":     {"Средняя ↓ по часам суток за неделю (Мбит/с, замеров): ", "Average ↓ by hour of day over the week (Mbps, checks): "},
-	"opt_uac_cancelled":  {"Запуск отменён — не подтверждён запрос Windows (UAC).", "Launch cancelled — the Windows (UAC) prompt was not confirmed."},
-	"opt_timeout":        {"Помощник оптимизации не ответил слишком долго — наблюдение остановлено.", "The optimization helper did not respond in time — watching stopped."},
-	"opt_cancelled_user": {"Оптимизация отменена пользователем.", "Optimization cancelled by user."},
 	"ag_done_fallback":   {"Готово — действие выполнено.", "Done — action completed."},
 	"ag_llm_unreachable": {"llama-server недоступен: %v", "llama-server unreachable: %v"},
 	"ag_llm_code":        {"llama-server вернул %d: %s", "llama-server returned %d: %s"},
@@ -340,6 +337,27 @@ var i18nTable = map[string][2]string{
 	"rep_server":   {"Сервер:      %s (%s)", "Server:     %s (%s)"},
 	"rep_proto":    {"Протокол:    %s", "Protocol:   %s"},
 	"rep_time":     {"Время теста: %s", "Test time:  %s"},
+
+	// ── update.go (обновления) ──────────────────────────────────────
+	"upd_title":          {"Обновление", "Update"},
+	"toast_upd_uptodate": {"У вас последняя версия", "You are on the latest version"},
+	"toast_upd_available": {"Доступна версия %s — скачиваю…", "Version %s is available — downloading…"},
+	"toast_upd_ready":    {"Обновление %s скачано — перезапустите приложение", "Update %s downloaded — restart the app to apply"},
+	"toast_upd_err":      {"Не удалось проверить обновления", "Failed to check for updates"},
+	"err_upd_busy":       {"проверка или загрузка обновления уже идёт", "an update check or download is already running"},
+	"err_upd_not_ready":  {"обновление ещё не скачано", "the update has not been downloaded yet"},
+	"err_upd_bad_resp":   {"неожиданный ответ GitHub (HTTP %d)", "unexpected GitHub response (HTTP %d)"},
+	"err_upd_no_asset":   {"в релизе %s нет сборки для этой системы", "release %s has no build for this system"},
+	"err_upd_http":       {"HTTP %d при скачивании", "HTTP %d while downloading"},
+	"err_upd_small":      {"файл обновления подозрительно мал (%d Б)", "update file is suspiciously small (%d B)"},
+	"err_upd_checksum":   {"контрольная сумма файла не совпала", "file checksum mismatch"},
+	"upd_restart_err":    {"не удалось запустить обновлённый экземпляр: %v", "failed to start the updated instance: %v"},
+
+	// ── trayui.go (обновления) ──────────────────────────────────────
+	"tray_version":     {"Версия: %s", "Version: %s"},
+	"tray_upd_check":   {"Проверить обновления", "Check for updates"},
+	"tray_upd_auto":    {"Автообновление", "Auto-update"},
+	"tray_upd_install": {"Обновить и перезапустить", "Update and restart"},
 }
 
 // monthNames — названия месяцев для трея (строка «Месяц: ↓ … ↑ …»).

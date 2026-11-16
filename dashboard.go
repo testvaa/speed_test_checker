@@ -74,24 +74,35 @@ type Dashboard struct {
 	phaseFrac  float64
 	checkStart time.Time
 
-	proc  *ProcNet     // «кто потребляет интернет» для /api/procnet
-	agent *Agent       // ИИ-агент (инициализация + чат)
-	net   *NetMon      // монитор трафика (строка traffic архива)
-	watch *WatchMon    // фоновые наблюдения за хостами
-	disk  *DiskScanner // сканер занятого места для карточки «Диск»
+	proc  *ProcNet  // «кто потребляет интернет» для /api/procnet
+	agent *Agent    // ИИ-агент (инициализация + чат)
+	net   *NetMon   // монитор трафика (строка traffic архива)
+	watch *WatchMon // фоновые наблюдения за хостами
+	upd   *Updater  // обновления (блок update в /api/state)
 
 	archMu sync.Mutex
 	archSt archStatus // экспорт/импорт архива (одна операция за раз)
 
-	onRun     func()
-	onNetRate func(int)
-	onLang    func(string)
+	onRun           func()
+	onNetRate       func(int)
+	onLang          func(string)
+	onCheckUpdates  func()
+	onToggleAuto    func(bool)
+	onInstallUpdate func()
+	onCancelUpdate  func()
 }
 
 // SetAgent подключает агента (вызывается один раз при старте приложения).
 func (d *Dashboard) SetAgent(a *Agent) {
 	d.mu.Lock()
 	d.agent = a
+	d.mu.Unlock()
+}
+
+// SetUpdater подключает апдейтер для блока update в /api/state.
+func (d *Dashboard) SetUpdater(u *Updater) {
+	d.mu.Lock()
+	d.upd = u
 	d.mu.Unlock()
 }
 
@@ -113,7 +124,6 @@ func NewDashboard(cfg *Config, histPath string) *Dashboard {
 		goodMbps:    cfg.GoodMbps,
 		netRateMs:   nearestNetRateMs(cfg.NetRateMs),
 		proc:        NewProcNet(),
-		disk:        NewDiskScanner(),
 	}
 	if data, err := os.ReadFile(histPath); err == nil {
 		_ = json.Unmarshal(data, &d.history) // повреждённый файл — без истории
@@ -170,12 +180,10 @@ func (d *Dashboard) Start() {
 		mux.HandleFunc("/api/archive/import", d.serveArchiveImport)
 		mux.HandleFunc("/api/archive/status", d.serveArchiveStatus)
 		mux.HandleFunc("/api/history/clear", d.serveHistoryClear)
-		mux.HandleFunc("/api/disk", d.serveDisk)
-		mux.HandleFunc("/api/disk/scan", d.serveDiskScan)
-		mux.HandleFunc("/api/disk/stop", d.serveDiskStop)
-		mux.HandleFunc("/api/disk/clear", d.serveDiskClear)
-		mux.HandleFunc("/api/disk/optimize", d.serveDiskOptimize)
-		mux.HandleFunc("/api/disk/optimize/stop", d.serveDiskOptimizeStop)
+		mux.HandleFunc("/api/update/check", d.serveUpdateCheck)
+		mux.HandleFunc("/api/update/toggle", d.serveUpdateToggle)
+		mux.HandleFunc("/api/update/install", d.serveUpdateInstall)
+		mux.HandleFunc("/api/update/cancel", d.serveUpdateCancel)
 		// DNS-rebinding: слушаем только 127.0.0.1, но сторонний сайт может
 		// резолвить свой домен на 127.0.0.1 и слать запросы из браузера —
 		// принимаем только ожидаемый Host
@@ -304,6 +312,7 @@ func (d *Dashboard) serveOrbJS(w http.ResponseWriter, r *http.Request) {
 type dashState struct {
 	Now         string       `json:"now"`
 	URL         string       `json:"url"`
+	Version     string       `json:"version"` // версия бинарника
 	Checking    bool         `json:"checking"`
 	Phase       string       `json:"phase"`
 	Frac        float64      `json:"frac"`
@@ -317,6 +326,7 @@ type dashState struct {
 	Lang        string       `json:"lang"`
 	Watch       []WatchJob   `json:"watch,omitempty"`
 	Agent       *agentStatus `json:"agent,omitempty"`
+	Update      *updateState `json:"update,omitempty"`
 }
 
 func (d *Dashboard) serveState(w http.ResponseWriter, r *http.Request) {
@@ -324,6 +334,7 @@ func (d *Dashboard) serveState(w http.ResponseWriter, r *http.Request) {
 	st := dashState{
 		Now:         time.Now().Format(time.RFC3339),
 		URL:         d.url,
+		Version:     version,
 		Checking:    d.checking,
 		Phase:       d.phase,
 		Frac:        d.phaseFrac,
@@ -336,6 +347,7 @@ func (d *Dashboard) serveState(w http.ResponseWriter, r *http.Request) {
 		NetRateMs:   d.netRateMs,
 		Lang:        Lang(),
 	}
+	upd := d.upd
 	for _, p := range d.series {
 		st.Series = append(st.Series, [3]float64{float64(p.T.UnixMilli()), p.Down, p.Up})
 	}
@@ -347,6 +359,10 @@ func (d *Dashboard) serveState(w http.ResponseWriter, r *http.Request) {
 		st.Watch = d.watch.List()
 	}
 	d.mu.Unlock()
+	if upd != nil {
+		us := upd.Snapshot()
+		st.Update = &us
+	}
 	if st.History == nil {
 		st.History = []dashEntry{}
 	}
@@ -445,6 +461,94 @@ func (d *Dashboard) serveLang(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fn(req.Lang)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// serveUpdateCheck запускает проверку обновлений (кнопка «Проверить»).
+func (d *Dashboard) serveUpdateCheck(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
+		return
+	}
+	d.mu.Lock()
+	upd, fn := d.upd, d.onCheckUpdates
+	d.mu.Unlock()
+	if upd != nil && upd.Busy() {
+		http.Error(w, T("err_upd_busy"), http.StatusConflict)
+		return
+	}
+	if fn == nil {
+		http.Error(w, T("err_unavailable"), http.StatusServiceUnavailable)
+		return
+	}
+	fn()
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// serveUpdateToggle переключает автообновление (тумблер на карточке).
+func (d *Dashboard) serveUpdateToggle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, T("err_bad_json"), http.StatusBadRequest)
+		return
+	}
+	d.mu.Lock()
+	fn := d.onToggleAuto
+	d.mu.Unlock()
+	if fn == nil {
+		http.Error(w, T("err_unavailable"), http.StatusServiceUnavailable)
+		return
+	}
+	fn(req.Enabled)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// serveUpdateInstall применяет скачанное обновление: подмена exe и
+// перезапуск. Ответ уходит до остановки сервера — апдейтер даёт паузу.
+func (d *Dashboard) serveUpdateInstall(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
+		return
+	}
+	d.mu.Lock()
+	upd, fn := d.upd, d.onInstallUpdate
+	d.mu.Unlock()
+	if upd != nil && upd.State() != updReady {
+		http.Error(w, T("err_upd_not_ready"), http.StatusConflict)
+		return
+	}
+	if fn == nil {
+		http.Error(w, T("err_unavailable"), http.StatusServiceUnavailable)
+		return
+	}
+	fn()
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// serveUpdateCancel прерывает скачивание обновления.
+func (d *Dashboard) serveUpdateCancel(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, T("err_post_only"), http.StatusMethodNotAllowed)
+		return
+	}
+	d.mu.Lock()
+	fn := d.onCancelUpdate
+	d.mu.Unlock()
+	if fn == nil {
+		http.Error(w, T("err_unavailable"), http.StatusServiceUnavailable)
+		return
+	}
+	fn()
 	w.WriteHeader(http.StatusNoContent)
 }
 

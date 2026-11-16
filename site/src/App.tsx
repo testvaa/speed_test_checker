@@ -6,8 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Button as Btn } from "@/components/ui/button";
 import { TypingAnimation } from "@/components/ui/typing-animation";
 import {
-  Activity, Bot, ChevronDown, Clapperboard, Download, Gamepad2, Globe, HardDrive,
-  Languages, MapPin, Package, Palette, Sparkles, Star, Tags, Terminal, TrendingDown, Zap,
+  Activity, Bot, ChevronDown, Clapperboard, Download, Gamepad2, Globe,
+  Languages, MapPin, Package, Palette, RefreshCw, Star, Tags, Terminal, TrendingDown, Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -147,8 +147,7 @@ const features: [LucideIcon, string, string][] = [
   [Activity, "Монитор трафика", "Текущие скорости каждые 2 секунды, итоги за день и месяц, история ~3 месяца дней и ~2 года месяцев."],
   [MapPin, "Аналитика локаций VPN", "Каждый замер запоминает город сервера и AS-сеть — видно, через какой VPN шёл трафик и какая локация быстрее."],
   [Bot, "ИИ-агент на локальной модели", "Чат на дашборде: «сделай замер», «следи за router.local каждые 5 минут», архивы и настройки — модель крутится на вашей машине, ничего не уходит наружу. Каждый запрос показывается карточкой «Ход запроса»: шаги, таймер, длительности."],
-  [HardDrive, "Сканер диска", "Что чем занято: светящаяся LED-матрица по категориям, выбор диска C/D/E, старт и стоп в один клик, подсказки «что можно почистить». Скан всего системного диска — секунды."],
-  [Sparkles, "Оптимизация системы", "DISM-очистка хранилища компонентов и temp-файлов из дашборда — с живым прогрессом вместо чёрной консоли. Windows, по UAC, с отменой в один клик."],
+  [RefreshCw, "Автообновление", "Приложение само проверяет новый релиз (при запуске и раз в сутки), скачивает бинарник с проверкой контрольной суммы и по кнопке перезапускается — без установщиков и ручных скачиваний. Переключается в трее и на дашборде."],
   [Languages, "Русский / английский", "Кнопка EN/RU на дашборде или пункт в трее — весь интерфейс, уведомления и даже ИИ-агент переключаются на лету. При первой установке язык берётся из системы."],
   [Package, "Портативность", "Один бинарь (~10 МБ), без установки. Все данные — config.json, traffic.json, history.json — рядом с программой."],
   [Terminal, "Консольные режимы", "-once — полный отчёт в консоль без трея, -netmon — диагностика монитора трафика."],
@@ -213,8 +212,7 @@ const details: [string, React.ReactNode][] = [
   ["Зоны и уведомления", "границы «плохо/хорошо»; тосты: все / только проблемы / выкл"],
   ["Монитор трафика", "счётчики сетевых интерфейсов (gopsutil), опрос раз в 2 с"],
   ["ИИ-агент", "локальная LFM3-1.7B через llama.cpp (Metal/Vulkan/CPU), инструменты: замер, наблюдение за хостами (ICMP), архив, настройки; ход запроса — карточкой со шагами"],
-  ["Сканер диска", "FindFirstFileEx + пул работников (балансировка по очереди); категории по пути, старт/стоп с частичными итогами, выбор тома"],
-  ["Оптимизация Windows", "DISM StartComponentCleanup (± ResetBase) + cleanmgr по белому списку категорий; UAC, кооперативная отмена через stop-файл"],
+  ["Автообновление", "сверка с релизами GitHub (запуск + раз в сутки), скачивание с проверкой .sha256, подмена exe и перезапуск; тумблер в трее и на дашборде"],
   ["Язык интерфейса", "русский / английский — кнопка EN/RU на дашборде, Настройки → Язык в трее; по умолчанию — язык системы"],
   ["Дашборд", "встроенная страница (go:embed), HTTP только на 127.0.0.1:8787+"],
   ["Данные", "config.json · traffic.json · history.json — рядом с exe, переносятся копированием; история до 200 проверок"],
@@ -266,7 +264,7 @@ function Footer() {
   return (
     <footer className="mt-5 border-t border-line pb-11 pt-7">
       <div className="mx-auto flex max-w-[960px] flex-wrap items-center gap-[18px] px-5 font-mono text-[12.5px] text-dimmer">
-        <span>Speed Test Tray · v1.2.0 · Windows / macOS / Linux · RU / EN</span>
+        <span>Speed Test Tray · v1.3.0 · Windows / macOS / Linux · RU / EN</span>
         <a className={a} href={GH}>GitHub</a>
         <a className={a} href={GH + "/releases"}>Релизы</a>
         <a className={a} href={GH + "/issues"}>Issues</a>

@@ -67,7 +67,12 @@ type TrayUI struct {
 	menuNotifP *systray.MenuItem
 	mTraffic   *systray.MenuItem
 	mZones     *systray.MenuItem
-	last       *Result
+
+	// обновления: строка версии, проверка, тумблер, перезапуск
+	mUpdCheck *systray.MenuItem
+	mUpdAuto  *systray.MenuItem
+	mUpdApply *systray.MenuItem
+	last      *Result
 
 	// реестр заголовков для смены языка без пересборки меню
 	retitles []retitle
@@ -88,13 +93,16 @@ type TrayUI struct {
 	pgMu   sync.Mutex
 	pgLast time.Time
 
-	onRunNow     func()
-	onInterval   func(min int)
-	onDownloadMB func(mb int)
-	onUploadMB   func(mb int)
-	onLimits     func(bad, good float64)
-	onNotifyMode func(mode string)
-	onLang       func(lang string)
+	onRunNow      func()
+	onInterval    func(min int)
+	onDownloadMB  func(mb int)
+	onUploadMB    func(mb int)
+	onLimits      func(bad, good float64)
+	onNotifyMode  func(mode string)
+	onLang        func(lang string)
+	onCheckUpd    func()
+	onAutoUpd     func(bool)
+	onApplyUpd    func()
 }
 
 // retitle — пункт меню с функцией-заголовком: при смене языка refreshLang
@@ -150,6 +158,7 @@ func newTrayUI(cfg *Config, cfgPath string,
 	onRunNow func(), onInterval func(int),
 	onDownloadMB func(int), onUploadMB func(int), onLimits func(bad, good float64),
 	onNotifyMode func(string), onLang func(string),
+	onCheckUpd func(), onAutoUpd func(bool), onApplyUpd func(),
 ) *TrayUI {
 	return &TrayUI{
 		cfg:          cfg,
@@ -161,6 +170,9 @@ func newTrayUI(cfg *Config, cfgPath string,
 		onLimits:     onLimits,
 		onNotifyMode: onNotifyMode,
 		onLang:       onLang,
+		onCheckUpd:   onCheckUpd,
+		onAutoUpd:    onAutoUpd,
+		onApplyUpd:   onApplyUpd,
 	}
 }
 
@@ -382,6 +394,67 @@ func (u *TrayUI) buildSettings() {
 				}
 			}
 		}()
+	}
+
+	// Обновления: текущая версия, проверка, тумблер автообновления.
+	// «Обновить и перезапустить» скрыт до состояния ready.
+	setRoot.AddSeparator()
+	verLine := setRoot.AddSubMenuItem(T("tray_version", version), "")
+	u.reg(verLine, func() string { return T("tray_version", version) }, nil)
+
+	u.mUpdCheck = setRoot.AddSubMenuItem(T("tray_upd_check"), "")
+	u.reg(u.mUpdCheck, func() string { return T("tray_upd_check") }, nil)
+	go func() {
+		for range u.mUpdCheck.ClickedCh {
+			if u.onCheckUpd != nil {
+				u.onCheckUpd()
+			}
+		}
+	}()
+
+	u.mUpdAuto = setRoot.AddSubMenuItemCheckbox(T("tray_upd_auto"), "", u.cfg.AutoUpdateEnabled())
+	u.reg(u.mUpdAuto, func() string { return T("tray_upd_auto") }, nil)
+	go func() {
+		for range u.mUpdAuto.ClickedCh {
+			if u.onAutoUpd != nil {
+				u.onAutoUpd(!u.cfg.AutoUpdateEnabled())
+			}
+		}
+	}()
+
+	u.mUpdApply = setRoot.AddSubMenuItem(T("tray_upd_install"), "")
+	u.reg(u.mUpdApply, func() string { return T("tray_upd_install") }, nil)
+	u.mUpdApply.Hide()
+	go func() {
+		for range u.mUpdApply.ClickedCh {
+			if u.onApplyUpd != nil {
+				u.onApplyUpd() // клик по пункту и есть подтверждение перезапуска
+			}
+		}
+	}()
+}
+
+// updateChanged показывает/прячет «Обновить и перезапустить» по состоянию.
+func (u *TrayUI) updateChanged(s updateState) {
+	if u.mUpdApply == nil {
+		return
+	}
+	if s.State == updReady {
+		u.mUpdApply.Show()
+	} else {
+		u.mUpdApply.Hide()
+	}
+}
+
+// autoUpdateChanged перекладывает галочку автообновления.
+func (u *TrayUI) autoUpdateChanged(on bool) {
+	if u.mUpdAuto == nil {
+		return
+	}
+	if on {
+		u.mUpdAuto.Check()
+	} else {
+		u.mUpdAuto.Uncheck()
 	}
 }
 

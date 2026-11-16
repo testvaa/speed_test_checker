@@ -21,8 +21,8 @@ import (
 // сайт speed.cloudflare.net. Ключи не нужны.
 const baseURL = "https://speed.cloudflare.com"
 
-// Без браузерных заголовков /meta отвечает 403.
-const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 SpeedTestTray/1.0"
+// Без браузерных заголовков /meta отвечает 403 (версию берём из main.version).
+var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 SpeedTestTray/" + version
 
 // Result — итог одной проверки (аналог сводки на speed.cloudflare.net).
 type Result struct {

@@ -21,6 +21,7 @@ type Config struct {
 	TimeoutSec    int     `json:"timeout_sec"`    // таймаут каждого этапа, секунд
 	NetRateMs     int     `json:"net_rate_ms"`    // частота опроса сети/обновления живого графика, мс
 	Lang          string  `json:"lang"`           // язык интерфейса: ru / en (нет поля — по языку ОС)
+	AutoUpdate    *bool   `json:"auto_update,omitempty"` // автообновление: nil = включено (выключается явно)
 
 	// ИИ-агент: локальный llama-server + модель (запускается по кнопке на дашборде).
 	AgentLlamaServer string `json:"agent_llama_server"` // путь до llama-server.exe (относительно exe или абсолютный)
@@ -141,6 +142,17 @@ func (c *Config) normalize() {
 	if c.AgentDevice == "" {
 		c.AgentDevice = d.AgentDevice
 	}
+}
+
+// AutoUpdateEnabled — включено ли автообновление: поле отсутствует
+// (nil) или true; false — только явным выключением.
+func (c *Config) AutoUpdateEnabled() bool {
+	return c.AutoUpdate == nil || *c.AutoUpdate
+}
+
+// SetAutoUpdate записывает явное значение переключателя.
+func (c *Config) SetAutoUpdate(on bool) {
+	c.AutoUpdate = &on
 }
 
 func clampInt(v, lo, hi int) int {

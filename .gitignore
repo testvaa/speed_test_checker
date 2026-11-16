@@ -1,6 +1,10 @@
 # Сборка и локальное состояние
 SpeedTestTray.exe
 SpeedTestTray.exe~
+SpeedTestTray.exe.old
+SpeedTestTray.exe.new
+SpeedTestTray.exe.new.part
+SpeedTestTray.exe.restart.cmd
 config.json
 traffic.json
 *.log

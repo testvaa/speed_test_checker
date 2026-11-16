@@ -16,9 +16,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-latest, asset: SpeedTestTray.exe, flags: '-ldflags "-s -w -H=windowsgui"' }
-          - { os: ubuntu-latest, asset: SpeedTestTray-linux-x64, flags: '-ldflags "-s -w"' }
-          - { os: macos-latest, asset: SpeedTestTray-macos-arm64, flags: '-ldflags "-s -w"' }
+          # -X main.version — версия для автообновления (сравнивается с тегом)
+          - { os: windows-latest, asset: SpeedTestTray.exe, flags: '-ldflags "-s -w -H=windowsgui -X main.version=$GITHUB_REF_NAME"' }
+          - { os: ubuntu-latest, asset: SpeedTestTray-linux-x64, flags: '-ldflags "-s -w -X main.version=$GITHUB_REF_NAME"' }
+          - { os: macos-latest, asset: SpeedTestTray-macos-arm64, flags: '-ldflags "-s -w -X main.version=$GITHUB_REF_NAME"' }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +35,7 @@ jobs:
       # Intel-маки: кросс-сборка x64 на macos-latest
       - name: build macos x64 (cross)
         if: matrix.os == 'macos-latest'
-        run: GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC="clang -arch x86_64" go build -trimpath -ldflags "-s -w" -o SpeedTestTray-macos-x64 .
+        run: GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC="clang -arch x86_64" go build -trimpath -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o SpeedTestTray-macos-x64 .
       - uses: actions/upload-artifact@v4
         if: matrix.os == 'macos-latest'
         with:
@@ -49,6 +50,12 @@ jobs:
         with:
           merge-multiple: true
           path: dist
+      # контрольные суммы: апдейтер проверяет <имя>.sha256 при скачивании
+      - run: |
+          cd dist
+          for f in *; do
+            [ -f "$f" ] && sha256sum "$f" > "$f.sha256" && cat "$f.sha256"
+          done
       - run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
             || gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes

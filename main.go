@@ -27,22 +27,17 @@ type app struct {
 	watch    *WatchMon
 	dash     *Dashboard
 	agent    *Agent
+	upd      *Updater
 }
+
+// version — версия бинарника; релизная сборка прошивает её через
+// -ldflags "-X main.version=vX.Y.Z" (см. .github/workflows/release.yml).
+var version = "dev"
 
 func main() {
 	once := flag.Bool("once", false, T("flag_once"))
 	netmon := flag.Bool("netmon", false, T("flag_netmon"))
-	optimize := flag.Bool("optimize", false, "run the system optimization helper (windows, elevated)")
-	optLog := flag.String("optlog", "", "optimization helper log file")
-	optReset := flag.Bool("resetbase", false, "add DISM /ResetBase to the optimization cleanup")
 	flag.Parse()
-
-	if *optimize {
-		// помощник «Оптимизации системы»: запускается дашбордом с правами
-		// администратора, работает отдельно и завершается после очистки
-		runOptimizeHelper(*optLog, *optReset)
-		return
-	}
 
 	cfg, cfgPath := LoadConfig(!*once && !*netmon)
 	SetLang(cfg.Lang)
@@ -118,14 +113,29 @@ func main() {
 	a.dash.SetNetMon(a.netMon)
 	a.dash.SetWatchMon(a.watch)
 	a.watch.Start()
+	a.upd = NewUpdater(cfg.AutoUpdateEnabled())
+	a.upd.OnNotify(a.onUpdNotify)
+	a.upd.OnChanged(func(updateState) { // трей появится позже — nil-проверка внутри
+		if a.ui != nil {
+			a.ui.updateChanged(a.upd.Snapshot())
+		}
+	})
+	a.upd.OnRestart(func() { systray.Quit() })
+	a.dash.SetUpdater(a.upd)
 	a.dash.onRun = a.runNow
 	a.dash.onNetRate = a.setNetRate
 	a.dash.onLang = a.setLang
+	a.dash.onCheckUpdates = a.checkUpdates
+	a.dash.onToggleAuto = a.setAutoUpdate
+	a.dash.onInstallUpdate = a.applyUpdate
+	a.dash.onCancelUpdate = a.cancelUpdate
 	a.dash.Start()
+	cleanupUpdateFiles() // хвосты прошлых обновлений (.old/.new)
 	systray.Run(a.onReady, func() {
 		a.netMon.Save()
 		a.agent.Stop() // при выходе останавливаем llama-server
 		a.watch.Stop()
+		a.upd.Stop()   // и закачку обновления, если она шла
 	})
 }
 
@@ -145,11 +155,14 @@ func runNetMonTest(cfgPath string) {
 
 func (a *app) onReady() {
 	a.ui = newTrayUI(a.cfg, a.cfgPath, a.runNow, a.setInterval,
-		a.setDownloadMB, a.setUploadMB, a.setLimits, a.setNotifyMode, a.setLang)
+		a.setDownloadMB, a.setUploadMB, a.setLimits, a.setNotifyMode, a.setLang,
+		a.checkUpdates, a.setAutoUpdate, a.applyUpdate)
 	a.ui.dashURL = a.dash.URL()
 	a.ui.build()
+	a.ui.updateChanged(a.upd.Snapshot()) // состояние «Обновить и перезапустить»
 	go a.safeLoop("loop", a.loop)
 	go a.safeLoop("netLoop", a.netLoop)
+	a.upd.Start() // фоновая проверка обновлений (при включённом автообновлении)
 }
 
 // safeLoop защищает фоновые циклы: паника не убьёт молча весь процесс,
@@ -310,6 +323,51 @@ func (a *app) setNotifyMode(mode string) {
 	a.cfg.NotifyMode = mode
 	a.saveCfg()
 	a.ui.notifyModeChanged(mode)
+}
+
+// checkUpdates — «Проверить обновления» из трея или дашборда.
+func (a *app) checkUpdates() {
+	a.upd.Check(true)
+}
+
+// setAutoUpdate переключает автообновление (трей и дашборд).
+func (a *app) setAutoUpdate(on bool) {
+	if on == a.cfg.AutoUpdateEnabled() {
+		if a.ui != nil {
+			a.ui.autoUpdateChanged(on) // галочку всё равно выставим
+		}
+		return
+	}
+	a.cfg.SetAutoUpdate(on)
+	a.saveCfg()
+	a.upd.SetAuto(on)
+	if a.ui != nil {
+		a.ui.autoUpdateChanged(on)
+	}
+}
+
+// applyUpdate — «Обновить и перезапустить»: подмена exe и рестарт.
+func (a *app) applyUpdate() {
+	a.upd.Apply()
+}
+
+// cancelUpdate прерывает скачивание обновления.
+func (a *app) cancelUpdate() {
+	a.upd.Cancel()
+}
+
+// onUpdNotify переводит события апдейтера в тосты.
+func (a *app) onUpdNotify(kind, ver string) {
+	switch kind {
+	case "uptodate":
+		pushToast(T("upd_title"), T("toast_upd_uptodate"), "ok")
+	case "available":
+		pushToast(T("upd_title"), T("toast_upd_available", ver), "ok")
+	case "ready":
+		pushToast(T("upd_title"), T("toast_upd_ready", ver), "ok")
+	case "error":
+		pushToast(T("upd_title"), T("toast_upd_err"), "bad")
+	}
 }
 
 // setLang меняет язык интерфейса: конфиг, глобальный i18n и меню трея.
