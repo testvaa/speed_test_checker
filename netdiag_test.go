@@ -4,7 +4,10 @@ package main
 // системных утилит и расчёт джиттера. Только чистые функции — гонки и
 // сетевое окружение не тестируем.
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestBloatGrade(t *testing.T) {
 	cases := []struct {
@@ -244,6 +247,46 @@ Signal                 : 71%
 	ssid, pct, ok = parseNetshWlan(two)
 	if !ok || ssid != "Second" || pct != 71 {
 		t.Errorf("parseNetshWlan(два) = (%q, %d, %v), хочу (Second, 71, true)", ssid, pct, ok)
+	}
+}
+
+func TestNDDigestText(t *testing.T) {
+	// пустые состояния — сводки нет
+	if got := ndDigestText(netDiagState{State: ndIdle}); got != "" {
+		t.Errorf("ndDigestText(idle) = %q, хочу пусто", got)
+	}
+	if got := ndDigestText(netDiagState{State: ndDone}); got != "" {
+		t.Errorf("ndDigestText(без данных) = %q, хочу пусто", got)
+	}
+
+	// полный прогон: факты + рекомендации
+	st := netDiagState{
+		State: ndDone, Score: 96,
+		LastRun: "2026-11-19T00:40:00+03:00",
+		Env: &ndEnv{Gateway: "192.168.1.1"},
+		Ping: []ndPingHost{
+			{Host: "1.1.1.1", Scope: "net", Recv: 8, Sent: 8, AvgMs: 12.3, JitterMs: 2.1},
+			{Host: "192.168.1.1", Scope: "gw", Recv: 8, Sent: 8},
+		},
+		DNS: []ndDNSProbe{
+			{Label: "system", OK: 5, AvgMs: 90},
+			{Label: "1.1.1.1", OK: 5, AvgMs: 20},
+		},
+		Bloat: &ndBloat{AddDownMs: 52, Grade: "B"},
+		Recs: []ndRec{
+			{Code: "bloat_warn", Sev: 2, Args: map[string]any{"add": 52.0}},
+		},
+	}
+	got := ndDigestText(st)
+	for _, want := range []string{"96/100", "192.168.1.1", "1.1.1.1", "90", "20", "B", "bufferbloat"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("ndDigestText: в %q нет %q", got, want)
+		}
+	}
+
+	// остановленный с данными — сводка тоже нужна (частичный результат)
+	if got := ndDigestText(netDiagState{State: ndStopped, Env: &ndEnv{Wifi: true, SSID: "Home"}}); !strings.Contains(got, "Home") {
+		t.Errorf("ndDigestText(stopped) = %q, хочу SSID внутри", got)
 	}
 }
 

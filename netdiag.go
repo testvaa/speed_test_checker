@@ -133,6 +133,7 @@ type NetDiag struct {
 
 	hist func() []dashEntry // история замеров для правила «падение скорости»
 	busy func() bool        // внешняя занятость (идёт замер скорости)
+	onFinish func()         // «диагностика завершилась» (агент сбрасывает кэш сводки)
 }
 
 // NewNetDiag создаёт контроллер в состоянии idle.
@@ -145,6 +146,9 @@ func (nd *NetDiag) SetHistory(fn func() []dashEntry) { nd.hist = fn }
 
 // SetBusy подключает проверку внешней занятости (замер скорости).
 func (nd *NetDiag) SetBusy(fn func() bool) { nd.busy = fn }
+
+// SetOnFinish подключает колбэк завершения диагностики.
+func (nd *NetDiag) SetOnFinish(fn func()) { nd.onFinish = fn }
 
 // Running — идёт ли диагностика прямо сейчас.
 func (nd *NetDiag) Running() bool {
@@ -303,7 +307,11 @@ func (nd *NetDiag) finish(state, errMsg string) {
 	nd.lastRun = time.Now()
 	nd.score, nd.recs = score, recs
 	nd.curCancel = nil
+	fin := nd.onFinish
 	nd.mu.Unlock()
+	if fin != nil {
+		go fin() // без чужих локов в руках: агент сбросит кэш сводки
+	}
 }
 
 func (nd *NetDiag) anyData() bool {
@@ -440,6 +448,8 @@ func (nd *NetDiag) phaseDNS() {
 		{"system", ""},
 		{"1.1.1.1", "1.1.1.1:53"},
 		{"8.8.8.8", "8.8.8.8:53"},
+		{"77.88.8.8", "77.88.8.8:53"}, // Яндекс DNS
+		{"223.5.5.5", "223.5.5.5:53"}, // AliDNS (Китай)
 	}
 	rows := make([]ndDNSProbe, len(defs))
 	for i, d := range defs {
@@ -904,6 +914,106 @@ func parseRouteDarwin(out string) (gw, iface string, ok bool) {
 		}
 	}
 	return gw, iface, gw != ""
+}
+
+// ── сводка для ИИ-агента ────────────────────────────────────────────
+
+// DigestText — локализованная выжимка последней диагностики для сводки
+// агента; пустая строка — диагностики ещё не было.
+func (nd *NetDiag) DigestText() string { return ndDigestText(nd.Snapshot()) }
+
+// nddRecText — формулировка одной рекомендации (ключи ndd_rec_<code>).
+func nddRecText(r ndRec) string {
+	switch r.Code {
+	case "ok":
+		return T("ndd_rec_ok")
+	case "gw_loss", "net_loss":
+		return fmt.Sprintf(T("ndd_rec_"+r.Code), r.argF("loss"))
+	case "latency":
+		return fmt.Sprintf(T("ndd_rec_latency"), r.argF("ms"))
+	case "jitter":
+		return fmt.Sprintf(T("ndd_rec_jitter"), r.argF("j"))
+	case "bloat_bad", "bloat_warn":
+		return fmt.Sprintf(T("ndd_rec_"+r.Code), r.argF("add"))
+	case "dns_slow":
+		return fmt.Sprintf(T("ndd_rec_dns_slow"), r.argF("sys"), r.argF("alt"))
+	case "wifi_weak":
+		return fmt.Sprintf(T("ndd_rec_wifi_weak"), r.argI("pct"))
+	case "speed_drop":
+		return fmt.Sprintf(T("ndd_rec_speed_drop"), r.argF("cur"), r.argF("max"))
+	}
+	return r.Code + " " + fmt.Sprint(r.Args)
+}
+
+// argF / argI достают аргумент рекомендации с нужным типом.
+func (r ndRec) argF(k string) float64 {
+	if v, ok := r.Args[k].(float64); ok {
+		return v
+	}
+	return 0
+}
+
+func (r ndRec) argI(k string) int {
+	return int(r.argF(k))
+}
+
+// ndDigestText — чистая функция (тестируется): одна-две строки фактов
+// о последней диагностике + рекомендации текстом.
+func ndDigestText(s netDiagState) string {
+	if s.State == ndIdle || (s.Env == nil && len(s.Ping) == 0 && s.Bloat == nil) {
+		return ""
+	}
+	ts := ""
+	if s.LastRun != "" {
+		if t, err := time.Parse(time.RFC3339, s.LastRun); err == nil {
+			ts = t.Format("15:04")
+		}
+	}
+	parts := []string{fmt.Sprintf(T("ndd_head"), ts, s.Score)}
+	if s.Env != nil {
+		if s.Env.Wifi && s.Env.SSID != "" {
+			parts = append(parts, fmt.Sprintf(T("ndd_if_wifi"), s.Env.SSID, s.Env.SignalPct))
+		} else {
+			parts = append(parts, T("ndd_if_lan"))
+		}
+		if s.Env.Gateway != "" {
+			parts = append(parts, fmt.Sprintf(T("ndd_gw"), s.Env.Gateway))
+		}
+	}
+	for _, p := range s.Ping {
+		if p.Recv == 0 || p.Scope == "gw" {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf(T("ndd_ping"), p.Host, p.AvgMs, p.LossPct, p.JitterMs))
+		break // одного публичного хоста для сводки достаточно
+	}
+	if len(s.DNS) > 0 {
+		var sys, best float64
+		haveAlt := false
+		for _, d := range s.DNS {
+			if d.Label == "system" {
+				sys = d.AvgMs
+			} else if d.OK > 0 && (!haveAlt || d.AvgMs < best) {
+				haveAlt, best = true, d.AvgMs
+			}
+		}
+		if sys > 0 && haveAlt {
+			parts = append(parts, fmt.Sprintf(T("ndd_dns"), sys, best))
+		}
+	}
+	if s.Bloat != nil && s.Bloat.Err == "" {
+		parts = append(parts, fmt.Sprintf(T("ndd_bloat"),
+			math.Max(s.Bloat.AddDownMs, s.Bloat.AddUpMs), s.Bloat.Grade))
+	}
+	out := strings.Join(parts, "; ")
+	if len(s.Recs) > 0 {
+		items := make([]string, len(s.Recs))
+		for i, r := range s.Recs {
+			items[i] = fmt.Sprintf("%d) %s", i+1, nddRecText(r))
+		}
+		out += ". " + T("ndd_recs") + " " + strings.Join(items, "; ")
+	}
+	return out + "."
 }
 
 // ndNetshWlanOut снимает вывод netsh (Windows; нет netsh/Wi-Fi — пусто).

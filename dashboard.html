@@ -354,12 +354,25 @@
   .nd-timer{font:11.5px var(--mono);color:var(--dimmer);text-align:right}
   .nd-body{margin-top:14px}
   .nd-scorebox{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
-  .nd-ring{position:relative;width:84px;height:84px;border-radius:50%;flex:none;
-    display:flex;align-items:center;justify-content:center;gap:1px;
-    font:700 22px var(--mono);color:var(--txt)}
-  .nd-ring::before{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--card)}
-  .nd-ring b,.nd-ring small{position:relative;z-index:1}
-  .nd-ring small{font:600 10px var(--mono);color:var(--dim);align-self:flex-end;margin-bottom:16px}
+  /* ретро-виджет (порт 8-bit Loading Screen с 21st.dev): чёрный CRT-экран,
+     монохром — цельная полоса с рамкой и тёмными насечками, без внешних шрифтов */
+  .nd-retro{flex:none;width:250px;background:#0a0a0a;border:1px solid #1c1c1c;
+    padding:18px 16px 14px;display:flex;flex-direction:column;gap:12px;user-select:none}
+  .nd-retro-title{font:700 13px var(--mono);letter-spacing:2.5px;color:#fff;
+    text-transform:uppercase;text-align:center;
+    animation:ndpulse 1.6s steps(2) infinite}
+  .nd-retro-pct-row{display:flex;justify-content:flex-end;font:8.5px var(--mono);
+    color:#c4c4c4;letter-spacing:1px;margin-bottom:5px}
+  .nd-retro-bar{position:relative;height:18px;border:2px solid #e8e8e8;background:#000}
+  .nd-retro-fill{position:absolute;top:0;bottom:0;left:0;width:0%;background:#e8e8e8}
+  .nd-retro-ticks{position:absolute;inset:0;
+    background:repeating-linear-gradient(90deg,#0a0a0a 0 2px,transparent 2px calc(100% / 22))}
+  .nd-retro-tip{min-height:30px;font:8.5px var(--mono);color:#b0b0b0;line-height:1.7;
+    text-align:center}
+  @keyframes ndpulse{50%{opacity:.55}}
+  @media(prefers-reduced-motion:reduce){
+    .nd-retro-title{animation:none}
+  }
   .nd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
     gap:12px;flex:1;min-width:250px}
   .nd-sec{border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:0}
@@ -367,11 +380,16 @@
   .nd-kv{display:flex;justify-content:space-between;gap:10px;align-items:baseline;
     font:11.5px var(--mono);padding:2.5px 0}
   .nd-kv span{color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .nd-kv b{font-weight:500;color:var(--txt);white-space:nowrap}
+  .nd-kv b{font-weight:500;color:var(--txt);min-width:0;overflow-wrap:break-word;text-align:right}
   .nd-kv b.ok{color:var(--ok)} .nd-kv b.warn{color:var(--warn)} .nd-kv b.bad{color:var(--bad)}
   .nd-recs{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;
     display:flex;flex-direction:column;gap:8px}
-  .nd-recs-title{font:650 12px var(--sans);color:var(--txt2)}
+  .nd-recs-head{display:flex;align-items:center;gap:8px}
+  .nd-recs-title{font:650 12px var(--sans);color:var(--txt2);flex:1}
+  .nd-copy{flex:none;width:26px;height:26px;border-radius:8px;border:1px solid var(--border);
+    background:var(--btn);color:var(--dim);cursor:pointer;font:12px var(--mono);line-height:1;
+    display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s}
+  .nd-copy:hover{border-color:var(--border2);color:var(--txt2)}
   .nd-rec{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;
     line-height:1.5;color:var(--txt2)}
   .nd-rec i{width:9px;height:9px;border-radius:50%;flex:none;margin-top:5px}
@@ -621,7 +639,17 @@ try{if(localStorage.getItem("stt_lang")==="en"){document.documentElement.lang="e
 
     <div class="nd-body" id="ndBody" style="display:none">
       <div class="nd-scorebox">
-        <div class="nd-ring" id="ndRing"><b id="ndScore">—</b><small>/100</small></div>
+        <div class="nd-retro" id="ndRetro">
+          <div class="nd-retro-title" id="ndRetroTitle">ИДЁТ АНАЛИЗ</div>
+          <div>
+            <div class="nd-retro-pct-row"><span id="ndRetroPct">0</span>%</div>
+            <div class="nd-retro-bar" id="ndRetroBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div class="nd-retro-fill" id="ndRetroFill"></div>
+              <div class="nd-retro-ticks"></div>
+            </div>
+          </div>
+          <div class="nd-retro-tip" id="ndRetroTip"></div>
+        </div>
         <div class="nd-grid">
           <div class="nd-sec"><h4 data-i18n="na_env">Окружение</h4><div id="ndEnv"></div></div>
           <div class="nd-sec"><h4 data-i18n="na_ping">Пинг-профиль</h4><div id="ndPing"></div></div>
@@ -1014,6 +1042,8 @@ ru: {
   na_dns_system:"системный", na_dns_line:(ms,ok)=>ms+" мс · "+ok,
   na_idle:"без нагрузки", na_down:"под загрузкой", na_up:"под отдачей",
   na_grade:"оценка", na_recs:"Рекомендации",
+  na_rt_run:"идёт анализ", na_rt_done:"результат",
+  na_copy:"копировать рекомендации", na_copied:"скопировано",
   na_grade_word:s=>s>=85?"отлично":s>=70?"хорошо":s>=55?"терпимо":"плохо",
   rec_ok:"Замечаний нет: локальная сеть чистая, потери, задержка и поведение под нагрузкой — в норме.",
   rec_gw_loss:a=>"Потери до шлюза ("+a.loss+"%) — проблема в локальной сети: перезагрузите роутер, проверьте кабель; если Wi-Fi — подойдите ближе или подключитесь кабелем.",
@@ -1022,8 +1052,8 @@ ru: {
   rec_jitter:a=>"Джиттер "+a.j+" мс — задержка «плавает» (для голоса и игр желательно до 10–15 мс, ITU-T G.1010): чаще всего лечится кабелем вместо Wi-Fi.",
   rec_bloat_bad:a=>"Под нагрузкой задержка растёт на +"+a.add+" мс — буферы роутера переполняются (bufferbloat): включите SQM/QoS на роутере (fq_codel/cake) или ограничьте скорость на 5–10%.",
   rec_bloat_warn:a=>"Под нагрузкой задержка растёт на +"+a.add+" мс — умеренный bufferbloat: поможет SQM/QoS на роутере.",
-  rec_dns_fail:"Системный DNS не отвечает, альтернативы работают: смените DNS на 1.1.1.1 или 8.8.8.8.",
-  rec_dns_slow:a=>"Системный DNS заметно медленнее альтернативы ("+a.sys+" против "+a.alt+" мс): попробуйте 1.1.1.1 или 8.8.8.8.",
+  rec_dns_fail:"Системный DNS не отвечает, альтернативы работают: смените DNS на 1.1.1.1, 8.8.8.8, 77.88.8.8 (Яндекс) или 223.5.5.5 (AliDNS).",
+  rec_dns_slow:a=>"Системный DNS заметно медленнее альтернативы ("+a.sys+" против "+a.alt+" мс): попробуйте 1.1.1.1, 8.8.8.8, 77.88.8.8 (Яндекс) или 223.5.5.5 (AliDNS).",
   rec_wifi_weak:a=>"Сигнал Wi-Fi "+a.pct+"% — слабый (для стабильной связи нужно лучше 50–60%, это примерно −67 dBm у Cisco): подойдите ближе к роутеру или используйте кабель.",
   rec_speed_drop:a=>"Последний замер ↓"+a.cur+" против недавнего максимума ↓"+a.max+" Мбит/с: возможно, канал занят — загляните в «кто потребляет интернет».",
 },
@@ -1128,6 +1158,8 @@ en: {
   na_dns_system:"system", na_dns_line:(ms,ok)=>ms+" ms · "+ok,
   na_idle:"idle", na_down:"downloading", na_up:"uploading",
   na_grade:"grade", na_recs:"Recommendations",
+  na_rt_run:"analyzing", na_rt_done:"result",
+  na_copy:"copy recommendations", na_copied:"copied",
   na_grade_word:s=>s>=85?"excellent":s>=70?"good":s>=55?"fair":"poor",
   rec_ok:"No issues: the local network is clean; loss, latency and behavior under load are all within normal ranges.",
   rec_gw_loss:a=>"Packet loss to the gateway ("+a.loss+"%) — a local network problem: reboot the router and check the cable; on Wi-Fi move closer or switch to a cable.",
@@ -1136,8 +1168,8 @@ en: {
   rec_jitter:a=>"Jitter of "+a.j+" ms — latency is unstable (voice and gaming want ≤ 10–15 ms, ITU-T G.1010): a cable instead of Wi-Fi usually fixes it.",
   rec_bloat_bad:a=>"Latency grows by +"+a.add+" ms under load — the router's buffers are overflowing (bufferbloat): enable SQM/QoS on the router (fq_codel/cake) or cap the rate by 5–10%.",
   rec_bloat_warn:a=>"Latency grows by +"+a.add+" ms under load — moderate bufferbloat: SQM/QoS on the router would help.",
-  rec_dns_fail:"The system DNS is not responding while alternatives work: switch DNS to 1.1.1.1 or 8.8.8.8.",
-  rec_dns_slow:a=>"The system DNS is noticeably slower than the alternative ("+a.sys+" vs "+a.alt+" ms): try 1.1.1.1 or 8.8.8.8.",
+  rec_dns_fail:"The system DNS is not responding while alternatives work: switch DNS to 1.1.1.1, 8.8.8.8, 77.88.8.8 (Yandex) or 223.5.5.5 (AliDNS).",
+  rec_dns_slow:a=>"The system DNS is noticeably slower than the alternative ("+a.sys+" vs "+a.alt+" ms): try 1.1.1.1, 8.8.8.8, 77.88.8.8 (Yandex) or 223.5.5.5 (AliDNS).",
   rec_wifi_weak:a=>"Wi-Fi signal "+a.pct+"% is weak (stable links want better than 50–60%, roughly −67 dBm per Cisco): move closer to the router or use a cable.",
   rec_speed_drop:a=>"The last check ↓"+a.cur+" vs a recent maximum of ↓"+a.max+" Mbps: the channel may be busy — see “who is using the network”.",
 }};
@@ -1155,6 +1187,9 @@ const L10N = {
     calMon:["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"],
     wd:["Пн","Вт","Ср","Чт","Пт","Сб","Вс"],
     phase:{meta:"соединение",ping:"пинг",download:"загрузка",upload:"отдача",loss:"потери"},
+    ndTips:["СОВЕТ: КАБЕЛЬ НАДЁЖНЕЕ WI-FI ПРИ ДЖИТТЕРЕ","СОВЕТ: SQM НА РОУТЕРЕ ЛЕЧИТ ЛАГИ ПОД НАГРУЗКОЙ",
+      "СОВЕТ: 1.1.1.1 И 8.8.8.8 — БЫСТРЫЕ DNS","СОВЕТ: ПЕРЕЗАГРУЗКА РОУТЕРА РЕШАЕТ ПОЛОВИНУ ПРОБЛЕМ",
+      "СОВЕТ: ЗАМЕРЯЙТЕ В РАЗНОЕ ВРЕМЯ СУТОК"],
     archSteps:{export:["сбор данных","запись файла","готово"], import:["чтение и проверка","запись строк","сохранение"]},
     chips:[["Сделай замер скорости и скажи результат","сделать замер"],
            ["Когда лучше качать большие файлы?","лучшее время"],
@@ -1166,6 +1201,9 @@ const L10N = {
     calMon:["January","February","March","April","May","June","July","August","September","October","November","December"],
     wd:["Mo","Tu","We","Th","Fr","Sa","Su"],
     phase:{meta:"connecting",ping:"ping",download:"download",upload:"upload",loss:"loss"},
+    ndTips:["TIP: A CABLE BEATS WI-FI WHEN JITTER STRIKES","TIP: SQM ON THE ROUTER FIXES LAG UNDER LOAD",
+      "TIP: 1.1.1.1 AND 8.8.8.8 ARE FAST DNS SERVERS","TIP: REBOOTING THE ROUTER SOLVES HALF OF ALL PROBLEMS",
+      "TIP: MEASURE AT DIFFERENT TIMES OF DAY"],
     archSteps:{export:["collecting data","writing file","done"], import:["reading and verifying","writing lines","saving"]},
     chips:[["Run a speed test and tell me the result","run a test"],
            ["When is the best time to download large files?","best time"],
@@ -2446,6 +2484,44 @@ const ndSigned = v => (v >= 0 ? "+" : "−") + Math.abs(Math.round(v));
 // мс: десятые для быстрых линков (0.4 мс понятнее, чем «0 мс»)
 const ndMs = v => v < 10 ? v.toFixed(1) : String(Math.round(v));
 
+/* ретро-виджет (порт 8-bit Loading Screen): монохромная полоса с насечками,
+   % над баром, ротация советов; во время работы — прогресс фаз, в итоге — балл */
+let ndTipTimer = null, ndTipIdx = 0;
+
+function renderNDRetro(s){
+  const running = s.state === "running";
+  const show = running || !!(s.env || (s.ping && s.ping.length) ||
+    (s.dns && s.dns.length) || s.bloat || (s.recs && s.recs.length));
+  setShown($("ndRetro"), show);
+  if (!show){ if (ndTipTimer){ clearInterval(ndTipTimer); ndTipTimer = null; } return; }
+
+  const val = running ? Math.round((s.frac || 0) * 100) : (s.score || 0);
+  setText($("ndRetroTitle"), t(running ? "na_rt_run" : "na_rt_done"));
+  setText($("ndRetroPct"), String(val));
+  $("ndRetroBar").setAttribute("aria-valuenow", String(val));
+  $("ndRetro").title = running ? t("na_s_running") : val + " / 100 — " + t("na_grade_word", val);
+  // заливка шириной, ступенчато (без transition — 8-bit)
+  $("ndRetroFill").style.width = val + "%";
+
+  const tip = $("ndRetroTip");
+  if (running){
+    tip.style.color = ""; // монохром во время работы
+    if (!ndTipTimer){
+      const tips = l10n().ndTips;
+      ndTipIdx = 0; setText(tip, tips[0]);
+      ndTipTimer = setInterval(() => {
+        ndTipIdx = (ndTipIdx + 1) % tips.length;
+        setText($("ndRetroTip"), l10n().ndTips[ndTipIdx]);
+      }, 3000);
+    }
+  } else {
+    if (ndTipTimer){ clearInterval(ndTipTimer); ndTipTimer = null; }
+    setText(tip, t("na_grade_word", val) + " · " + val + "/100");
+    // единственный цветовой акцент — итоговая оценка зоны
+    tip.style.color = val >= 85 ? "var(--ok)" : val >= 55 ? "var(--warn)" : "var(--bad)";
+  }
+}
+
 function renderND(){
   if (!ndSt) return;
   const s = ndSt;
@@ -2455,7 +2531,7 @@ function renderND(){
 
   setShown($("ndIdle"), !running && !hasData && s.state !== "error");
   setShown($("ndRun"), running);
-  setShown($("ndBody"), !running && hasData);
+  setShown($("ndBody"), running || hasData); // ретро-виджет виден и во время работы
 
   // статусная строка по состоянию
   let cls = "", txt = "";
@@ -2491,6 +2567,7 @@ function renderND(){
     if (sb.disabled) sb.disabled = false;
   }
 
+  renderNDRetro(s);
   if (hasData) renderNDBody(s);
 
   // кнопки по состоянию: старт недоступен в работе, стоп виден в работе
@@ -2512,20 +2589,6 @@ function renderND(){
 }
 
 function renderNDBody(s){
-  // кольцо балла: во время работы — приглушённое «…», итог — по зонам
-  const ring = $("ndRing");
-  if (s.state === "running"){
-    ring.style.background = "conic-gradient(var(--dimmer) 0deg 8deg, var(--card2) 8deg 360deg)";
-    setText($("ndScore"), "…");
-    ring.title = t("na_s_running");
-  } else {
-    const score = s.score || 0, deg = Math.round(score * 3.6);
-    const col = score >= 85 ? "var(--ok)" : score >= 55 ? "var(--warn)" : "var(--bad)";
-    ring.style.background = "conic-gradient(" + col + " 0deg " + deg +
-      "deg, var(--card2) " + deg + "deg 360deg)";
-    setText($("ndScore"), String(score));
-    ring.title = score + " / 100 — " + t("na_grade_word", score);
-  }
 
   // окружение
   const er = [];
@@ -2579,16 +2642,89 @@ function renderNDBody(s){
   }
   $("ndBloat").innerHTML = br.join("");
 
-  // рекомендации: текст на клиенте — язык меняется без перезапуска
+  // рекомендации: текст на клиенте — язык меняется без перезапуска;
+  // справа от заголовка — кнопка «копировать» (текст + ключевые метрики)
   const recs = s.recs || [];
   const rc = recs.map(r =>
     '<div class="nd-rec sev' + r.sev + '"><i></i><div>' +
     esc(t("rec_" + r.code, r.args || {})) + '</div></div>').join("");
-  $("ndRecs").innerHTML = recs.length
-    ? '<div class="nd-recs-title">' + esc(t("na_recs")) + '</div>' + rc
-    : (s.state === "done"
-      ? '<div class="nd-rec sev1"><i></i><div>' + esc(t("rec_ok")) + '</div></div>'
-      : "");
+  const healthy = '<div class="nd-rec sev1"><i></i><div>' + esc(t("rec_ok")) + '</div></div>';
+  $("ndRecs").innerHTML = (recs.length || s.state === "done")
+    ? '<div class="nd-recs-head"><span class="nd-recs-title">' + esc(t("na_recs")) + '</span>' +
+      '<button class="nd-copy" id="ndCopyBtn" type="button" title="' +
+      esc(t("na_copy")) + '" aria-label="' + esc(t("na_copy")) + '">⧉</button></div>' +
+      (recs.length ? rc : healthy)
+    : "";
+  const cb = $("ndCopyBtn");
+  if (cb && !cb.dataset.bound){
+    cb.dataset.bound = "1";
+    cb.addEventListener("click", ndCopy);
+  }
+}
+
+// ndCopyText — что попадает в буфер: балл + окружение + метрики + рекомендации
+function ndCopyText(s){
+  const lines = [];
+  const time = s.lastRun ? hhmm(new Date(s.lastRun)) : "";
+  lines.push(t("na_title") + (time ? " · " + time : "") +
+    (s.score ? " · " + s.score + "/100" : ""));
+  if (s.env){
+    const kind = s.env.wifi
+      ? t("na_env_wifi") + (s.env.ssid ? " · " + s.env.ssid : "") +
+        (s.env.signalPct ? " · " + s.env.signalPct + "%" : "")
+      : t("na_env_lan");
+    lines.push(kind + (s.env.gateway ? " · " + t("na_env_gw") + " " + s.env.gateway : "") +
+      (s.env.mtu ? " · MTU " + s.env.mtu : ""));
+  }
+  (s.ping || []).forEach(p => {
+    lines.push(p.scope === "gw" ? t("na_env_gw") + " (" + p.host + ")" : p.host);
+    const last = lines.length - 1;
+    lines[last] += p.recv === 0 ? ": " + t("na_no_reply")
+      : ": " + t("na_ping_line", p.avgMs < 10 ? p.avgMs.toFixed(1) : Math.round(p.avgMs),
+          p.jitterMs < 10 ? p.jitterMs.toFixed(1) : Math.round(p.jitterMs), p.lossPct.toFixed(1));
+  });
+  (s.dns || []).forEach(d => {
+    lines.push((d.label === "system" ? t("na_dns_system") : d.label) + ": " +
+      (d.ok === 0 ? t("na_no_reply")
+        : t("na_dns_line", Math.round(d.avgMs), d.ok + "/" + d.probes)));
+  });
+  if (s.bloat && !s.bloat.err){
+    lines.push(t("na_bloat") + ": " + t("na_grade") + " " + s.bloat.grade +
+      " · " + t("na_idle") + " " + Math.round(s.bloat.idleMs) + " " + t("ms") +
+      " · " + t("na_down") + " " + ndSigned(s.bloat.addDownMs) + " " + t("ms") +
+      " · " + t("na_up") + " " + ndSigned(s.bloat.addUpMs) + " " + t("ms"));
+  }
+  if (recsLen(s)){
+    lines.push(t("na_recs") + ":");
+    (s.recs || []).forEach((r, i) => lines.push((i+1) + ". " + t("rec_" + r.code, r.args || {})));
+    if (!(s.recs || []).length && s.state === "done") lines.push("1. " + t("rec_ok"));
+  }
+  return lines.join("\n");
+}
+const recsLen = s => (s.recs && s.recs.length) || (s.state === "done" ? 1 : 0);
+
+async function ndCopy(){
+  if (!ndSt) return;
+  const txt = ndCopyText(ndSt);
+  let ok = true;
+  try{ await navigator.clipboard.writeText(txt); }
+  catch(e){
+    // fallback для старых вебвью / потери фокуса документа
+    ok = false;
+    const ta = document.createElement("textarea");
+    ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try{ ok = document.execCommand("copy"); }catch(e2){}
+    ta.remove();
+  }
+  const b = $("ndCopyBtn");
+  if (b && ok){ // ✓ — только когда реально скопировалось
+    b.textContent = "✓"; b.title = t("na_copied");
+    setTimeout(() => {
+      const x = $("ndCopyBtn");
+      if (x){ x.textContent = "⧉"; x.title = t("na_copy"); }
+    }, 1200);
+  }
 }
 
 $("ndStartBtn").addEventListener("click", async () => {

@@ -67,6 +67,7 @@ type Agent struct {
 	history   func() []dashEntry  // снимок истории замеров
 	traffic   func() TrafficStore // снимок накопленного трафика
 	watchProv func() []WatchJob   // снимок наблюдений за хостами
+	ndProv    func() string       // сводка последней диагностики сети
 	meta      func() agentMeta    // текущие настройки приложения
 	bad       float64
 	good      float64
@@ -136,6 +137,14 @@ func NewAgent(cfg *Config, cfgPath string) *Agent {
 func (a *Agent) SetProviders(history func() []dashEntry, traffic func() TrafficStore) {
 	a.mu.Lock()
 	a.history, a.traffic = history, traffic
+	a.mu.Unlock()
+}
+
+// SetNetDiagProvider подключает сводку последней диагностики сети —
+// агент знает о ней во всех ответах, без действий пользователя.
+func (a *Agent) SetNetDiagProvider(f func() string) {
+	a.mu.Lock()
+	a.ndProv = f
 	a.mu.Unlock()
 }
 
@@ -1282,7 +1291,7 @@ func (a *Agent) Digest() string {
 	}
 	// снимаем всё нужное и отпускаем замок: провайдеры делают свои
 	// вызовы с локами дашборда/монитора — вложенный a.mu запрещён
-	mf, hist, traf, bad, good, wprov := a.meta, a.history, a.traffic, a.bad, a.good, a.watchProv
+	mf, hist, traf, bad, good, wprov, ndf := a.meta, a.history, a.traffic, a.bad, a.good, a.watchProv, a.ndProv
 	a.mu.Unlock()
 	var m agentMeta
 	if mf != nil {
@@ -1296,6 +1305,11 @@ func (a *Agent) Digest() string {
 				parts[i] = fmt.Sprintf(T("dg_watch_item"), j.Host, j.IntervalMin)
 			}
 			digest += "\n" + T("dg_watch_intro") + strings.Join(parts, ", ")
+		}
+	}
+	if ndf != nil {
+		if txt := ndf(); txt != "" {
+			digest += "\n" + txt
 		}
 	}
 	a.mu.Lock()

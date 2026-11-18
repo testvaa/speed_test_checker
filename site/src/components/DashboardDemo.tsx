@@ -24,7 +24,7 @@ export function DashboardDemo() {
           <span className="h-[9px] w-[9px] rounded-full bg-ok shadow-[0_0_10px_var(--color-ok)] animate-glow-pulse" />
         </div>
         <div>
-          <div className="text-base font-semibold">Мониторинг сети</div>
+          <div className="text-[16px] font-semibold">Мониторинг сети</div>
           <div className="mt-0.5 font-mono text-xs text-dim">
             SpeedTestTray · <b className="font-medium text-[#cfcfd4]">Cloudflare</b> · каждые 10 мин
           </div>

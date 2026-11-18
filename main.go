@@ -127,6 +127,8 @@ func main() {
 	a.netDiag = NewNetDiag()
 	a.netDiag.SetHistory(a.dash.HistoryCopy)
 	a.netDiag.SetBusy(a.dash.IsChecking)
+	a.netDiag.SetOnFinish(a.agent.invalidateDigest) // сводка агента узнает о новой диагностике
+	a.agent.SetNetDiagProvider(a.netDiag.DigestText)
 	a.dash.SetNetDiag(a.netDiag)
 	a.dash.onRun = a.runNow
 	a.dash.onNetRate = a.setNetRate

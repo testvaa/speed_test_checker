@@ -338,6 +338,27 @@ var i18nTable = map[string][2]string{
 	"rep_proto":    {"Протокол:    %s", "Protocol:   %s"},
 	"rep_time":     {"Время теста: %s", "Test time:  %s"},
 
+	// ── netdiag.go (сводка диагностики для ИИ-агента) ────────────────
+	"ndd_head":      {"Диагностика сети (%s, балл %d/100):", "Network diagnosis (%s, score %d/100):"},
+	"ndd_if_wifi":   {"подключение Wi-Fi «%s», сигнал %d%%", "on Wi-Fi “%s”, signal %d%%"},
+	"ndd_if_lan":    {"подключение по кабелю", "on a wired connection"},
+	"ndd_gw":        {"шлюз %s", "gateway %s"},
+	"ndd_ping":      {"пинг %s — среднее %.1f мс, потери %.0f%%, джиттер %.1f мс", "ping %s — avg %.1f ms, loss %.0f%%, jitter %.1f ms"},
+	"ndd_dns":       {"DNS системный %.0f мс против лучших %.0f мс у альтернативы", "system DNS %.0f ms vs %.0f ms at the best alternative"},
+	"ndd_bloat":     {"прирост задержки под нагрузке %+.0f мс (оценка %s)", "latency rise under load %+.0f ms (grade %s)"},
+	"ndd_recs":      {"Рекомендации:", "Recommendations:"},
+	"ndd_rec_ok":        {"замечаний нет", "no issues found"},
+	"ndd_rec_gw_loss":   {"потери до шлюза %.1f%% — проверить роутер и кабель/Wi-Fi", "packet loss to the gateway %.1f%% — check the router and cable/Wi-Fi"},
+	"ndd_rec_net_loss":  {"потери наружу %.1f%% при чистом шлюзе — похоже на канал провайдера", "outbound loss %.1f%% with a clean gateway — looks like the ISP channel"},
+	"ndd_rec_latency":   {"средний отклик %.0f мс — высокая задержка", "average response %.0f ms — high latency"},
+	"ndd_rec_jitter":    {"джиттер %.1f мс — нестабильная задержка", "jitter %.1f ms — unstable latency"},
+	"ndd_rec_bloat_bad": {"под нагрузкой задержка растёт на %.0f мс — сильный bufferbloat, включить SQM/QoS на роутере", "latency grows by %.0f ms under load — heavy bufferbloat, enable SQM/QoS on the router"},
+	"ndd_rec_bloat_warn": {"под нагрузкой задержка растёт на %.0f мс — умеренный bufferbloat", "latency grows by %.0f ms under load — moderate bufferbloat"},
+	"ndd_rec_dns_fail":  {"системный DNS не отвечает, альтернативы работают — сменить DNS", "the system DNS is down while alternatives work — switch DNS"},
+	"ndd_rec_dns_slow":  {"системный DNS медленнее альтернативы (%.0f против %.0f мс) — попробовать 1.1.1.1, 8.8.8.8, 77.88.8.8 (Яндекс) или 223.5.5.5 (AliDNS)", "system DNS is slower than the alternative (%.0f vs %.0f ms) — try 1.1.1.1, 8.8.8.8, 77.88.8.8 (Yandex) or 223.5.5.5 (AliDNS)"},
+	"ndd_rec_wifi_weak": {"сигнал Wi-Fi %d%% — слабый, подойти ближе к роутеру или кабель", "Wi-Fi signal %d%% is weak — move closer to the router or use a cable"},
+	"ndd_rec_speed_drop": {"последний замер ↓%.1f против недавнего максимума ↓%.1f Мбит/с — канал может быть занят", "last check ↓%.1f vs a recent max of ↓%.1f Mbps — the channel may be busy"},
+
 	// ── trayui.go (пауза после 429) ──────────────────────────────────
 	"tray_pause_none": {"⏸ Cloudflare просит паузу (429)", "⏸ Cloudflare asked for a pause (429)"},
 	"tray_pause":      {"⏸ Cloudflare 429 — проверю в %s", "⏸ Cloudflare 429 — next check at %s"},

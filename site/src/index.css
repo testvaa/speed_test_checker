@@ -33,6 +33,19 @@
 }
 .animate-caret { animation: caret-blink 1s steps(1) infinite; }
 
+/* подпись активной точки навигации ScrollGlobe: показать и плавно спрятать */
+@keyframes fade-out-label {
+  0%, 70% { opacity: 1; transform: translateX(0) scale(1); }
+  100% { opacity: 0; transform: translateX(0.5rem) scale(0.95); }
+}
+.animate-fade-out { animation: fade-out-label 2.8s ease forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-glow-pulse, .animate-spin-slow, .animate-caret, .animate-fade-out {
+    animation: none;
+  }
+}
+
 html { scroll-behavior: smooth; }
 body {
   background: var(--color-base);
