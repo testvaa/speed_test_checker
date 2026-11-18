@@ -338,6 +338,16 @@ var i18nTable = map[string][2]string{
 	"rep_proto":    {"Протокол:    %s", "Protocol:   %s"},
 	"rep_time":     {"Время теста: %s", "Test time:  %s"},
 
+	// ── trayui.go (пауза после 429) ──────────────────────────────────
+	"tray_pause_none": {"⏸ Cloudflare просит паузу (429)", "⏸ Cloudflare asked for a pause (429)"},
+	"tray_pause":      {"⏸ Cloudflare 429 — проверю в %s", "⏸ Cloudflare 429 — next check at %s"},
+
+	// ── netdiag.go (анализатор сети) ─────────────────────────────────
+	"nd_err_running":   {"диагностика сети уже идёт", "a network diagnosis is already running"},
+	"nd_err_speedtest": {"сначала дождитесь окончания замера скорости", "wait for the speed test to finish first"},
+	"nd_err_conflict":  {"дождитесь окончания диагностики сети", "wait for the network diagnosis to finish"},
+	"nd_bloat_err":     {"нет соединения со speed.cloudflare.com", "cannot reach speed.cloudflare.com"},
+
 	// ── update.go (обновления) ──────────────────────────────────────
 	"upd_title":          {"Обновление", "Update"},
 	"toast_upd_uptodate": {"У вас последняя версия", "You are on the latest version"},

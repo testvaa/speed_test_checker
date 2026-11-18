@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button as Btn } from "@/components/ui/button";
 import { TypingAnimation } from "@/components/ui/typing-animation";
 import {
-  Activity, Bot, ChevronDown, Clapperboard, Download, Gamepad2, Globe,
+  Activity, Bot, ChevronDown, Clapperboard, Download, Gamepad2, Globe, HeartPulse,
   Languages, MapPin, Package, Palette, RefreshCw, Star, Tags, Terminal, TrendingDown, Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -143,6 +143,7 @@ const checks = [
 
 const features: [LucideIcon, string, string][] = [
   [Zap, "Замеры через Cloudflare", "Тот же API, что у speed.cloudflare.net: пинг без нагрузки и под нагрузкой, джиттер, потери пакетов, IP, провайдер и сервер."],
+  [HeartPulse, "Анализ сети с рекомендациями", "Диагностика за ~30 секунд: локальная сеть (шлюз, Wi-Fi, MTU), канал провайдера (пинг-профиль, потери), DNS и рост задержки под нагрузкой (bufferbloat). Итог — балл здоровья 0–100 и список конкретных рекомендаций; пороги метрик — по ITU-T Y.1541/G.1010 и практике bufferbloat.net."],
   [Palette, "Цветная иконка в трее", "Зелёная — хорошо, жёлтая — норма, красная — плохо. Границы настраиваются. Во время проверки иконка «оживает» свипом спидометра."],
   [Activity, "Монитор трафика", "Текущие скорости каждые 2 секунды, итоги за день и месяц, история ~3 месяца дней и ~2 года месяцев."],
   [MapPin, "Аналитика локаций VPN", "Каждый замер запоминает город сервера и AS-сеть — видно, через какой VPN шёл трафик и какая локация быстрее."],
@@ -206,7 +207,9 @@ function StartSteps() {
 
 const details: [string, React.ReactNode][] = [
   ["Платформы", "Windows x64 · Linux x64/arm64 · macOS arm64/x64 — готовые бинари в релизах"],
-  ["Замеры", "speed.cloudflare.com: /meta, TTFB-пробы, __down/__up, оценка потерь"],
+  ["Замеры", "speed.cloudflare.com: /meta, TTFB-пробы, __down/__up, оценка потерь; при ответе 429 автопроверки уходят в паузу с нарастающим интервалом (×3…×9, до 4 ч)"],
+  ["Анализ сети", "шлюз и маршрут по умолчанию (GetBestRoute / ip route), Wi-Fi сигнал (netsh), пинг-профиль (RFC 3550 джиттер), системный DNS против 1.1.1.1/8.8.8.8, задержка под нагрузкой (шкала A–F)"],
+  ["Кто потребляет интернет", "процессы и соединения с обратным DNS; поиск, сортировка и фильтры (активные, без loopback)"],
   ["Интервал проверок", "1 · 5 · 10 · 15 · 30 · 60 минут — из меню трея"],
   ["Объём теста", "загрузка 5–100 МБ, отдача 2–50 МБ — на ваш трафик"],
   ["Зоны и уведомления", "границы «плохо/хорошо»; тосты: все / только проблемы / выкл"],
@@ -264,7 +267,7 @@ function Footer() {
   return (
     <footer className="mt-5 border-t border-line pb-11 pt-7">
       <div className="mx-auto flex max-w-[960px] flex-wrap items-center gap-[18px] px-5 font-mono text-[12.5px] text-dimmer">
-        <span>Speed Test Tray · v1.3.0 · Windows / macOS / Linux · RU / EN</span>
+        <span>Speed Test Tray · v1.4.0 · Windows / macOS / Linux · RU / EN</span>
         <a className={a} href={GH}>GitHub</a>
         <a className={a} href={GH + "/releases"}>Релизы</a>
         <a className={a} href={GH + "/issues"}>Issues</a>

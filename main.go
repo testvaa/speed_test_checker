@@ -21,6 +21,7 @@ type app struct {
 	reset    chan struct{} // интервал изменился — пересчитать ожидание
 	netReset chan struct{} // частота опроса сети изменилась
 	running  atomic.Bool   // защита от наложения проверок
+	rateStrikes atomic.Int32 // подряд 429 от Cloudflare (для паузы автопроверок)
 	ui       *TrayUI
 	notif    notifier
 	netMon   *NetMon
@@ -28,6 +29,7 @@ type app struct {
 	dash     *Dashboard
 	agent    *Agent
 	upd      *Updater
+	netDiag  *NetDiag
 }
 
 // version — версия бинарника; релизная сборка прошивает её через
@@ -122,6 +124,10 @@ func main() {
 	})
 	a.upd.OnRestart(func() { systray.Quit() })
 	a.dash.SetUpdater(a.upd)
+	a.netDiag = NewNetDiag()
+	a.netDiag.SetHistory(a.dash.HistoryCopy)
+	a.netDiag.SetBusy(a.dash.IsChecking)
+	a.dash.SetNetDiag(a.netDiag)
 	a.dash.onRun = a.runNow
 	a.dash.onNetRate = a.setNetRate
 	a.dash.onLang = a.setLang
@@ -136,6 +142,7 @@ func main() {
 		a.agent.Stop() // при выходе останавливаем llama-server
 		a.watch.Stop()
 		a.upd.Stop()   // и закачку обновления, если она шла
+		a.netDiag.Stop() // и диагностику сети, если она шла
 	})
 }
 
@@ -215,11 +222,38 @@ func (a *app) loop() {
 	}
 }
 
-// waitInterval ждёт заданный интервал; прерывается досрочно по «проверить
-// сейчас» и пересчитывается при смене интервала.
+// backoffMinutes — пауза автопроверок после 429: интервал × 3 за каждую
+// ошибку подряд, не более ×9 и не более 4 часов. 0 ошибок — обычный
+// интервал. Чистая функция, покрыта тестом (backoff_test.go).
+func backoffMinutes(intervalMin, strikes int) int {
+	if strikes <= 0 {
+		return intervalMin
+	}
+	mult := 3 * strikes
+	if mult > 9 {
+		mult = 9
+	}
+	m := intervalMin * mult
+	if m > 240 {
+		m = 240
+	}
+	return m
+}
+
+// waitInterval ждёт заданный интервал (с паузой после 429); прерывается
+// досрочно по «проверить сейчас» и пересчитывается при смене интервала.
 func (a *app) waitInterval() {
 	for {
-		timer := time.NewTimer(time.Duration(a.cfg.IntervalMin) * time.Minute)
+		strikes := int(a.rateStrikes.Load())
+		wait := time.Duration(backoffMinutes(a.cfg.IntervalMin, strikes)) * time.Minute
+		// индикация: пауза после 429 — когда следующая автопроверка
+		paused := strikes > 0
+		next := time.Now().Add(wait)
+		a.dash.SetRatePause(paused, next)
+		if a.ui != nil {
+			a.ui.SetRatePause(paused, next)
+		}
+		timer := time.NewTimer(wait)
 		select {
 		case <-timer.C:
 			return
@@ -233,6 +267,11 @@ func (a *app) waitInterval() {
 }
 
 func (a *app) runNow() {
+	// во время диагностики сети замер не запускаем: нагрузка анализа
+	// исказила бы оба результата (кнопка в дашборде в это время заблокирована)
+	if a.netDiag != nil && a.netDiag.Running() {
+		return
+	}
 	select {
 	case a.trigger <- struct{}{}:
 	default:
@@ -243,6 +282,7 @@ func (a *app) setInterval(min int) {
 	if min == a.cfg.IntervalMin {
 		return
 	}
+	a.rateStrikes.Store(0) // пользователь сменил темп — паузу снимаем
 	a.cfg.IntervalMin = min
 	a.saveCfg()
 	a.ui.intervalChanged(min)
@@ -421,6 +461,12 @@ func (a *app) check() {
 	})
 	a.ui.setChecking(false) // остановить анимацию до перекраски иконки
 	a.dash.SetChecking(false)
+	// подряд 429 → автопроверки уходят в паузу с нарастающим интервалом
+	if res.Err != "" && res.RateLimited {
+		a.rateStrikes.Add(1)
+	} else {
+		a.rateStrikes.Store(0)
+	}
 	a.ui.apply(res)
 	a.notif.apply(res, a.cfg)
 	a.dash.ApplyResult(res)

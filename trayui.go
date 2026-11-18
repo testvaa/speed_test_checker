@@ -82,6 +82,11 @@ type TrayUI struct {
 	net      NetSnapshot
 	checking bool
 
+	// пауза автопроверок после 429 (пункт в блоке последнего теста)
+	pauseItem *systray.MenuItem
+	pauseOn   bool // под stateMu
+	pauseAt   time.Time
+
 	// адрес веб-дашборда; пустая строка — сервер не поднялся
 	dashURL string
 
@@ -225,6 +230,13 @@ func (u *TrayUI) build() {
 	u.line("net", "tray_net")
 	u.line("server", "tray_server")
 	u.line("time", "tray_time")
+
+	// строка «пауза после 429» — обычно скрыта; текст динамический,
+	// поэтому свой retitle-колбэк, а не статичный line()
+	u.pauseItem = systray.AddMenuItem(u.pauseTitle(), "")
+	u.items["pause"] = u.pauseItem
+	u.reg(u.pauseItem, u.pauseTitle, nil)
+	u.pauseItem.Hide()
 	systray.AddSeparator()
 
 	// Постоянный монитор трафика.
@@ -548,6 +560,33 @@ func (u *TrayUI) limitsChanged(bad, good float64) {
 func (u *TrayUI) setLine(key, format string, a ...any) {
 	if item, ok := u.items[key]; ok {
 		item.SetTitle(fmt.Sprintf(format, a...))
+	}
+}
+
+// pauseTitle — подпись пункта паузы (для refreshLang время не теряется).
+func (u *TrayUI) pauseTitle() string {
+	u.stateMu.Lock()
+	defer u.stateMu.Unlock()
+	if !u.pauseOn || u.pauseAt.IsZero() {
+		return T("tray_pause_none")
+	}
+	ts := u.pauseAt.Format("15:04")
+	if u.pauseAt.Sub(time.Now()) > 24*time.Hour {
+		ts = u.pauseAt.Format("02.01 15:04") // пауза ушла на следующие сутки
+	}
+	return T("tray_pause", ts)
+}
+
+// SetRatePause показывает/прячет строку «пауза после 429» в трее.
+func (u *TrayUI) SetRatePause(pause bool, next time.Time) {
+	u.stateMu.Lock()
+	u.pauseOn, u.pauseAt = pause, next
+	u.stateMu.Unlock()
+	if pause {
+		u.pauseItem.SetTitle(u.pauseTitle())
+		u.pauseItem.Show()
+	} else {
+		u.pauseItem.Hide()
 	}
 }
 

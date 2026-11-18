@@ -42,6 +42,7 @@ type Result struct {
 	Colo         string // IATA-код точки присутствия
 	HTTPProtocol string // например HTTP/2
 	Truncated    bool   // тест обрезан по таймауту, скорость посчитана по факту
+	RateLimited  bool   // Cloudflare ответил 429 (слишком часто проверяем)
 	Err          string // непусто — проверка не удалась
 }
 
@@ -310,6 +311,9 @@ func downloadAttempt(ctx context.Context, c *http.Client, cfg *Config, res *Resu
 		if resp.StatusCode >= 400 {
 			code := resp.StatusCode
 			resp.Body.Close()
+			if code == http.StatusTooManyRequests {
+				res.RateLimited = true
+			}
 			return fmt.Errorf(T("err_dl_http"), code)
 		}
 		pg("download", float64(total)/float64(n))
@@ -423,6 +427,9 @@ func measureUpload(ctx context.Context, c *http.Client, cfg *Config, res *Result
 	if resp.StatusCode >= 400 {
 		code := resp.StatusCode
 		resp.Body.Close()
+		if code == http.StatusTooManyRequests {
+			res.RateLimited = true
+		}
 		return fmt.Errorf(T("err_ul_http"), code)
 	}
 	resp.Body.Close()

@@ -74,11 +74,15 @@ type Dashboard struct {
 	phaseFrac  float64
 	checkStart time.Time
 
+	ratePause bool      // пауза автопроверок после 429 от Cloudflare
+	nextCheck time.Time // когда следующая автопроверка
+
 	proc  *ProcNet  // «кто потребляет интернет» для /api/procnet
 	agent *Agent    // ИИ-агент (инициализация + чат)
 	net   *NetMon   // монитор трафика (строка traffic архива)
 	watch *WatchMon // фоновые наблюдения за хостами
 	upd   *Updater  // обновления (блок update в /api/state)
+	netDiag *NetDiag // анализатор сети (/api/netdiag)
 
 	archMu sync.Mutex
 	archSt archStatus // экспорт/импорт архива (одна операция за раз)
@@ -180,6 +184,9 @@ func (d *Dashboard) Start() {
 		mux.HandleFunc("/api/archive/import", d.serveArchiveImport)
 		mux.HandleFunc("/api/archive/status", d.serveArchiveStatus)
 		mux.HandleFunc("/api/history/clear", d.serveHistoryClear)
+		mux.HandleFunc("/api/netdiag", d.serveNetDiag)
+		mux.HandleFunc("/api/netdiag/start", d.serveNetDiagStart)
+		mux.HandleFunc("/api/netdiag/stop", d.serveNetDiagStop)
 		mux.HandleFunc("/api/update/check", d.serveUpdateCheck)
 		mux.HandleFunc("/api/update/toggle", d.serveUpdateToggle)
 		mux.HandleFunc("/api/update/install", d.serveUpdateInstall)
@@ -229,6 +236,13 @@ func (d *Dashboard) PushNet(s NetSnapshot) {
 	if len(d.series) > dashSeriesCap {
 		d.series = d.series[len(d.series)-dashSeriesCap:]
 	}
+}
+
+// SetRatePause показывает/прячет индикацию паузы автопроверок (429).
+func (d *Dashboard) SetRatePause(pause bool, next time.Time) {
+	d.mu.Lock()
+	d.ratePause, d.nextCheck = pause, next
+	d.mu.Unlock()
 }
 
 // SetChecking включает/выключает статус «идёт проверка».
@@ -323,10 +337,13 @@ type dashState struct {
 	BadMbps     float64      `json:"badMbps"`
 	GoodMbps    float64      `json:"goodMbps"`
 	NetRateMs   int          `json:"netRateMs"`
+	RatePause   bool         `json:"ratePause"`           // пауза автопроверок после 429
+	NextCheck   string       `json:"nextCheck,omitempty"` // RFC3339 следующей автопроверки
 	Lang        string       `json:"lang"`
 	Watch       []WatchJob   `json:"watch,omitempty"`
 	Agent       *agentStatus `json:"agent,omitempty"`
 	Update      *updateState `json:"update,omitempty"`
+	NetDiag     string       `json:"netdiag,omitempty"` // состояние анализатора сети
 }
 
 func (d *Dashboard) serveState(w http.ResponseWriter, r *http.Request) {
@@ -345,6 +362,13 @@ func (d *Dashboard) serveState(w http.ResponseWriter, r *http.Request) {
 		BadMbps:     d.badMbps,
 		GoodMbps:    d.goodMbps,
 		NetRateMs:   d.netRateMs,
+		RatePause:   d.ratePause,
+		NextCheck: func() string {
+			if d.ratePause && !d.nextCheck.IsZero() {
+				return d.nextCheck.Format(time.RFC3339)
+			}
+			return ""
+		}(),
 		Lang:        Lang(),
 	}
 	upd := d.upd
@@ -357,6 +381,9 @@ func (d *Dashboard) serveState(w http.ResponseWriter, r *http.Request) {
 	}
 	if d.watch != nil {
 		st.Watch = d.watch.List()
+	}
+	if d.netDiag != nil {
+		st.NetDiag = d.netDiag.StateWord()
 	}
 	d.mu.Unlock()
 	if upd != nil {
@@ -380,10 +407,15 @@ func (d *Dashboard) serveRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d.mu.Lock()
-	run, checking := d.onRun, d.checking
+	run, checking, nd := d.onRun, d.checking, d.netDiag
 	d.mu.Unlock()
 	if checking {
 		http.Error(w, T("err_check_running"), http.StatusConflict)
+		return
+	}
+	if nd != nil && nd.Running() {
+		// замер под нагрузкой диагностики исказил бы оба результата
+		http.Error(w, T("nd_err_conflict"), http.StatusConflict)
 		return
 	}
 	if run == nil {

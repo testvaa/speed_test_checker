@@ -179,6 +179,12 @@
   .cn-remote b{color:var(--txt2);font-weight:500}
   .proc-note{margin-top:10px;color:var(--dimmer);font:11px var(--mono);line-height:1.6}
   .proc-empty{color:var(--dimmer);font:12.5px var(--mono);padding:18px 2px;text-align:center}
+  .proc-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+  .proc-tools input{background:var(--btn);color:var(--txt2);border:1px solid var(--border2);
+    border-radius:8px;font:12px var(--mono);padding:5px 9px;flex:1;min-width:150px}
+  .proc-tools input:focus{outline:none;border-color:var(--border2)}
+  .proc-tools input::placeholder{color:var(--dimmer)}
+  .proc-tools select{padding:5px 8px;font-size:12px}
 
   /* ── История проверок ──────────────────────────────────────── */
   /* заголовок секции: строка с опциональной кнопкой */
@@ -334,6 +340,45 @@
   .conn-lost{display:none;color:var(--bad);font-family:var(--mono);
     font-size:12.5px;text-align:center;padding:2px}
   .conn-lost.show{display:block}
+
+  /* ── Анализ сети ──────────────────────────────────────────── */
+  .nd-head{display:flex;align-items:center;gap:10px}
+  .nd-title{font-size:14.5px;font-weight:650}
+  .nd-sub{margin-top:2px;font:11.5px var(--mono);color:var(--dimmer)}
+  .nd-status{margin-left:auto;font:11.5px var(--mono);color:var(--dim);text-align:right}
+  .nd-status.ok{color:var(--ok)} .nd-status.err{color:var(--bad)} .nd-status.act{color:var(--txt2)}
+  .nd-idle{margin-top:12px}
+  .nd-idle p{margin:0;font-size:12.5px;color:var(--dim);line-height:1.5}
+  .nd-run{margin-top:12px}
+  .nd-bar{margin:8px 0 6px}
+  .nd-timer{font:11.5px var(--mono);color:var(--dimmer);text-align:right}
+  .nd-body{margin-top:14px}
+  .nd-scorebox{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+  .nd-ring{position:relative;width:84px;height:84px;border-radius:50%;flex:none;
+    display:flex;align-items:center;justify-content:center;gap:1px;
+    font:700 22px var(--mono);color:var(--txt)}
+  .nd-ring::before{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--card)}
+  .nd-ring b,.nd-ring small{position:relative;z-index:1}
+  .nd-ring small{font:600 10px var(--mono);color:var(--dim);align-self:flex-end;margin-bottom:16px}
+  .nd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:12px;flex:1;min-width:250px}
+  .nd-sec{border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:0}
+  .nd-sec h4{margin:0 0 6px;font:650 12px var(--sans);color:var(--txt2)}
+  .nd-kv{display:flex;justify-content:space-between;gap:10px;align-items:baseline;
+    font:11.5px var(--mono);padding:2.5px 0}
+  .nd-kv span{color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nd-kv b{font-weight:500;color:var(--txt);white-space:nowrap}
+  .nd-kv b.ok{color:var(--ok)} .nd-kv b.warn{color:var(--warn)} .nd-kv b.bad{color:var(--bad)}
+  .nd-recs{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;
+    display:flex;flex-direction:column;gap:8px}
+  .nd-recs-title{font:650 12px var(--sans);color:var(--txt2)}
+  .nd-rec{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;
+    line-height:1.5;color:var(--txt2)}
+  .nd-rec i{width:9px;height:9px;border-radius:50%;flex:none;margin-top:5px}
+  .nd-rec.sev3 i{background:var(--bad);box-shadow:0 0 6px var(--bad)}
+  .nd-rec.sev2 i{background:var(--warn);box-shadow:0 0 6px var(--warn)}
+  .nd-rec.sev1 i{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+  .nd-actions{display:flex;gap:8px;margin-top:12px}
 
   /* ── ИИ-агент ──────────────────────────────────────────────── */
   .col-agent{grid-area:agent;min-width:0}
@@ -547,6 +592,81 @@ try{if(localStorage.getItem("stt_lang")==="en"){document.documentElement.lang="e
 
   <!-- Последняя проверка -->
   <div class="chip" id="lastChip"></div>
+  <!-- Пауза автопроверок после 429 от Cloudflare -->
+  <div class="chip" id="pauseChip"></div>
+
+  <!-- Анализ сети: диагностика соединения и рекомендации по улучшению -->
+  <div class="card" id="ndCard">
+    <div class="nd-head">
+      <span class="nd-title" data-i18n="na_title">Анализ сети</span>
+      <span class="nd-status" id="ndStatus"></span>
+    </div>
+    <div class="nd-sub" id="ndLast" style="display:none"></div>
+
+    <div class="nd-idle" id="ndIdle">
+      <p data-i18n="na_intro">Диагностика за ~30 секунд: локальная сеть, канал провайдера, DNS и задержка под нагрузкой — с рекомендациями по улучшению соединения.</p>
+    </div>
+
+    <div class="nd-run" id="ndRun" style="display:none">
+      <div class="load-steps nd-phases" id="ndPhases">
+        <span><i></i><span data-i18n="na_ph_env">окружение</span></span>
+        <span><i></i><span data-i18n="na_ph_ping">пинг-профиль</span></span>
+        <span><i></i><span data-i18n="na_ph_dns">DNS</span></span>
+        <span><i></i><span data-i18n="na_ph_bloat">задержка под нагрузкой</span></span>
+        <span><i></i><span data-i18n="na_ph_rules">выводы</span></span>
+      </div>
+      <div class="pbar nd-bar" id="ndBarWrap"><i id="ndBar"></i></div>
+      <div class="nd-timer" id="ndTimer">0.0 с</div>
+    </div>
+
+    <div class="nd-body" id="ndBody" style="display:none">
+      <div class="nd-scorebox">
+        <div class="nd-ring" id="ndRing"><b id="ndScore">—</b><small>/100</small></div>
+        <div class="nd-grid">
+          <div class="nd-sec"><h4 data-i18n="na_env">Окружение</h4><div id="ndEnv"></div></div>
+          <div class="nd-sec"><h4 data-i18n="na_ping">Пинг-профиль</h4><div id="ndPing"></div></div>
+          <div class="nd-sec"><h4 data-i18n="na_dns">DNS</h4><div id="ndDns"></div></div>
+          <div class="nd-sec"><h4 data-i18n="na_bloat">Под нагрузкой</h4><div id="ndBloat"></div></div>
+        </div>
+      </div>
+      <div class="nd-recs" id="ndRecs"></div>
+    </div>
+
+    <div class="nd-actions">
+      <button class="btn" id="ndStartBtn" data-i18n="na_start">▶ Запустить диагностику</button>
+      <button class="foot-btn" id="ndStopBtn" type="button" style="display:none" data-i18n="na_stop">■ остановить</button>
+      <button class="foot-btn" id="procBtn" type="button"
+        data-i18n-tip="proc_tip" title="Процессы и их сетевые соединения"><span data-i18n="who_uses">кто потребляет интернет</span></button>
+    </div>
+  </div>
+
+  <!-- Кто потребляет интернет: раскрывается кнопкой из блока «Анализ сети» -->
+  <div class="card proc-card" id="procCard" style="display:none">
+    <div class="proc-head">
+      <span class="proc-title" data-i18n="who_uses">Кто потребляет интернет</span>
+      <div class="proc-tabs">
+        <button class="ptab on" type="button" data-tab="procs" data-i18n="tab_procs">Процессы</button>
+        <button class="ptab" type="button" data-tab="conns" data-i18n="tab_conns">Соединения</button>
+      </div>
+      <span class="proc-hint" id="procHint"></span>
+      <button class="foot-btn" id="procClose" type="button" data-i18n-tip="hide_panel" title="Скрыть панель">✕</button>
+    </div>
+    <div class="proc-tools">
+      <input type="text" id="procSearch" autocomplete="off" spellcheck="false"
+        data-i18n-ph="proc_search_ph" placeholder="поиск: процесс · IP · хост">
+      <select id="procSort"></select>
+      <button class="foot-btn" id="procActive" type="button"
+        data-i18n-tip="proc_active_tip" title="Только процессы с активностью" data-i18n="proc_only_active">активные</button>
+      <button class="foot-btn" id="procNoLocal" type="button"
+        data-i18n-tip="proc_nolocal_tip" title="Скрыть loopback-соединения (127.0.0.1, ::1)" data-i18n="proc_no_local">без локальных</button>
+    </div>
+    <div class="proc-body" id="procBody">
+      <div class="proc-empty" data-i18n="proc_collecting">снимаю данные…</div>
+    </div>
+    <div class="proc-note" data-i18n="proc_note">активность ≈ — счётчики ввода-вывода процесса (диск + сеть);
+      точный сетевой счётчик в Windows требует прав администратора.
+      Имена хостов определяются в течение пары секунд, локальные адреса не разрешаются.</div>
+  </div>
 
   <!-- График -->
   <div class="card">
@@ -574,28 +694,7 @@ try{if(localStorage.getItem("stt_lang")==="en"){document.documentElement.lang="e
           <option value="10000" data-i18n="s10">10 с</option>
         </select>
       </span>
-      <button class="foot-btn" id="procBtn" type="button"
-        data-i18n-tip="proc_tip" title="Процессы и их сетевые соединения"><span data-i18n="who_uses">кто потребляет интернет</span></button>
     </div>
-  </div>
-
-  <!-- Кто потребляет интернет: процессы и их соединения -->
-  <div class="card proc-card" id="procCard" style="display:none">
-    <div class="proc-head">
-      <span class="proc-title" data-i18n="who_uses">Кто потребляет интернет</span>
-      <div class="proc-tabs">
-        <button class="ptab on" type="button" data-tab="procs" data-i18n="tab_procs">Процессы</button>
-        <button class="ptab" type="button" data-tab="conns" data-i18n="tab_conns">Соединения</button>
-      </div>
-      <span class="proc-hint" id="procHint"></span>
-      <button class="foot-btn" id="procClose" type="button" data-i18n-tip="hide_panel" title="Скрыть панель">✕</button>
-    </div>
-    <div class="proc-body" id="procBody">
-      <div class="proc-empty" data-i18n="proc_collecting">снимаю данные…</div>
-    </div>
-    <div class="proc-note" data-i18n="proc_note">активность ≈ — счётчики ввода-вывода процесса (диск + сеть);
-      точный сетевой счётчик в Windows требует прав администратора.
-      Имена хостов определяются в течение пары секунд, локальные адреса не разрешаются.</div>
   </div>
 
   <!-- Аналитика измерений: фильтры + три блока в одной карточке -->
@@ -837,6 +936,7 @@ ru: {
   arch_import:"⬆ импорт", arch_import_tip:"Загрузить данные из архивного файла",
   clear:"🗑 Очистить", clear_tip:"Удалить все сохранённые измерения",
   conn_lost:"✗ нет связи с приложением — SpeedTestTray запущен?",
+  rate_pause:t=>"⏸ Cloudflare просит паузу (429) — следующая проверка ~"+t,
   arch_data:"Архив данных", overwrite:"Перезаписать", skip_matching:"Пропустить пересечения", cancel_l:"отмена",
   agent_title:"ИИ-агент сети", orb_tip:"ИИ-агент сети: нажмите, чтобы инициализировать",
   lang_tip:"Язык интерфейса / Interface language", theme_tip:"Переключить тему",
@@ -867,6 +967,12 @@ ru: {
   show_more:(n,rest)=>"показать ещё "+n+" из "+rest, show_more_tip:n=>"Раскрыть следующие "+n, collapse:"свернуть",
   points:n=>"точек "+n, window_min:n=>"окно "+n+" мин", red_below:v=>"красный ниже "+v+" Мбит/с",
   proc_refresh:s=>"обновление "+s+" с", proc_no_conns:"активных соединений нет", conns_short:"соед.",
+  proc_search_ph:"поиск: процесс · IP · хост",
+  proc_s_act:"по активности", proc_s_name:"по имени", proc_s_conns:"по соединениям",
+  proc_s_proc:"по процессу", proc_s_addr:"по адресу",
+  proc_only_active:"активные", proc_active_tip:"Только процессы с активностью ≥ 1 Б/с",
+  proc_no_local:"без локальных", proc_nolocal_tip:"Скрыть loopback-соединения (127.0.0.1, ::1)",
+  proc_flt_empty:"по фильтрам ничего не найдено",
   ag_off:"не запущен — нажмите «Инициализировать»", ag_starting:"запускаюсь", ag_ready:"на связи",
   ag_model:" · модель ", ag_local:" · всё локально", ag_error:"ошибка", ag_retry:"Повторить",
   ag_can_do:"Что он умеет", ag_hint:"После инициализации пишите в чате, например:",
@@ -891,6 +997,35 @@ ru: {
   upd_m_title:"Перезапустить и обновить?",
   upd_m_text:"Приложение закроется и откроется уже обновлённым. Дашборд на несколько секунд потеряет связь и восстановится сам.",
   upd_m_ok:"↻ Перезапустить",
+  na_title:"Анализ сети",
+  na_intro:"Диагностика за ~30 секунд: локальная сеть, канал провайдера, DNS и задержка под нагрузкой — с рекомендациями по улучшению соединения.",
+  na_start:"▶ Запустить диагностику", na_stop:"■ остановить", na_again:"↻ Запустить снова",
+  na_btn_running:"⏳ Идёт диагностика…",
+  na_s_idle:"не запускалась", na_s_running:"идёт диагностика…", na_s_done:"готово",
+  na_s_stopped:"остановлено — показан частичный результат", na_s_error:"ошибка",
+  na_ph_env:"окружение", na_ph_ping:"пинг-профиль", na_ph_dns:"DNS",
+  na_ph_bloat:"задержка под нагрузкой", na_ph_rules:"выводы",
+  na_last:t=>"последний запуск: "+t,
+  na_env:"Окружение", na_ping:"Пинг-профиль", na_dns:"DNS", na_bloat:"Под нагрузкой",
+  na_env_type:"подключение", na_env_wifi:"Wi-Fi", na_env_lan:"кабель (LAN)",
+  na_env_ssid:"сеть", na_env_sig:"сигнал", na_env_gw:"шлюз", na_unknown:"неизвестно",
+  na_no_reply:"нет ответа",
+  na_ping_line:(ms,j,l)=>ms+" мс · джиттер "+j+" · потери "+l+"%",
+  na_dns_system:"системный", na_dns_line:(ms,ok)=>ms+" мс · "+ok,
+  na_idle:"без нагрузки", na_down:"под загрузкой", na_up:"под отдачей",
+  na_grade:"оценка", na_recs:"Рекомендации",
+  na_grade_word:s=>s>=85?"отлично":s>=70?"хорошо":s>=55?"терпимо":"плохо",
+  rec_ok:"Замечаний нет: локальная сеть чистая, потери, задержка и поведение под нагрузкой — в норме.",
+  rec_gw_loss:a=>"Потери до шлюза ("+a.loss+"%) — проблема в локальной сети: перезагрузите роутер, проверьте кабель; если Wi-Fi — подойдите ближе или подключитесь кабелем.",
+  rec_net_loss:a=>"Шлюз отвечает чисто, но наружу теряется "+a.loss+"% пакетов — похоже на канал провайдера: проверьте кабель до роутера и в квартиру; если не помогло — заявка провайдеру.",
+  rec_latency:a=>"Средний отклик "+a.ms+" мс — много (норма до 100 мс, ITU-T Y.1541): частые причины — мобильный интернет, VPN, перегруженный канал.",
+  rec_jitter:a=>"Джиттер "+a.j+" мс — задержка «плавает» (для голоса и игр желательно до 10–15 мс, ITU-T G.1010): чаще всего лечится кабелем вместо Wi-Fi.",
+  rec_bloat_bad:a=>"Под нагрузкой задержка растёт на +"+a.add+" мс — буферы роутера переполняются (bufferbloat): включите SQM/QoS на роутере (fq_codel/cake) или ограничьте скорость на 5–10%.",
+  rec_bloat_warn:a=>"Под нагрузкой задержка растёт на +"+a.add+" мс — умеренный bufferbloat: поможет SQM/QoS на роутере.",
+  rec_dns_fail:"Системный DNS не отвечает, альтернативы работают: смените DNS на 1.1.1.1 или 8.8.8.8.",
+  rec_dns_slow:a=>"Системный DNS заметно медленнее альтернативы ("+a.sys+" против "+a.alt+" мс): попробуйте 1.1.1.1 или 8.8.8.8.",
+  rec_wifi_weak:a=>"Сигнал Wi-Fi "+a.pct+"% — слабый (для стабильной связи нужно лучше 50–60%, это примерно −67 dBm у Cisco): подойдите ближе к роутеру или используйте кабель.",
+  rec_speed_drop:a=>"Последний замер ↓"+a.cur+" против недавнего максимума ↓"+a.max+" Мбит/с: возможно, канал занят — загляните в «кто потребляет интернет».",
 },
 en: {
   doc_title:"SpeedTestTray · Dashboard", h_title:"Network monitoring", every:"every", min:"min",
@@ -915,6 +1050,7 @@ en: {
   arch_import:"⬆ import", arch_import_tip:"Load data from an archive file",
   clear:"🗑 Clear", clear_tip:"Delete all saved measurements",
   conn_lost:"✗ no connection to the app — is SpeedTestTray running?",
+  rate_pause:t=>"⏸ Cloudflare asked for a pause (429) — next check ~"+t,
   arch_data:"Data archive", overwrite:"Overwrite", skip_matching:"Skip matching", cancel_l:"cancel",
   agent_title:"Network AI agent", orb_tip:"Network AI agent: click to initialize",
   lang_tip:"Язык интерфейса / Interface language", theme_tip:"Toggle theme",
@@ -945,6 +1081,12 @@ en: {
   show_more:(n,rest)=>"show "+n+" more of "+rest, show_more_tip:n=>"Show the next "+n, collapse:"collapse",
   points:n=>"points "+n, window_min:n=>"window "+n+" min", red_below:v=>"red below "+v+" Mbps",
   proc_refresh:s=>"refresh "+s+" s", proc_no_conns:"no active connections", conns_short:"conn.",
+  proc_search_ph:"search: process · IP · host",
+  proc_s_act:"by activity", proc_s_name:"by name", proc_s_conns:"by connections",
+  proc_s_proc:"by process", proc_s_addr:"by address",
+  proc_only_active:"active", proc_active_tip:"Only processes with activity ≥ 1 B/s",
+  proc_no_local:"no loopback", proc_nolocal_tip:"Hide loopback connections (127.0.0.1, ::1)",
+  proc_flt_empty:"nothing matches the filters",
   ag_off:"not running — press Initialize", ag_starting:"starting", ag_ready:"connected",
   ag_model:" · model ", ag_local:" · all local", ag_error:"error", ag_retry:"Retry",
   ag_can_do:"What it can do", ag_hint:"After initialization, type in the chat, for example:",
@@ -969,6 +1111,35 @@ en: {
   upd_m_title:"Restart and update?",
   upd_m_text:"The app will close and reopen updated. The dashboard will lose connection for a few seconds and recover on its own.",
   upd_m_ok:"↻ Restart",
+  na_title:"Network analysis",
+  na_intro:"A ~30-second diagnosis: local network, ISP channel, DNS and latency under load — with recommendations for improving the connection.",
+  na_start:"▶ Run diagnosis", na_stop:"■ stop", na_again:"↻ Run again",
+  na_btn_running:"⏳ Running…",
+  na_s_idle:"not run yet", na_s_running:"running…", na_s_done:"done",
+  na_s_stopped:"stopped — partial result shown", na_s_error:"error",
+  na_ph_env:"environment", na_ph_ping:"ping profile", na_ph_dns:"DNS",
+  na_ph_bloat:"latency under load", na_ph_rules:"conclusions",
+  na_last:t=>"last run: "+t,
+  na_env:"Environment", na_ping:"Ping profile", na_dns:"DNS", na_bloat:"Under load",
+  na_env_type:"connection", na_env_wifi:"Wi-Fi", na_env_lan:"cable (LAN)",
+  na_env_ssid:"network", na_env_sig:"signal", na_env_gw:"gateway", na_unknown:"unknown",
+  na_no_reply:"no reply",
+  na_ping_line:(ms,j,l)=>ms+" ms · jitter "+j+" · loss "+l+"%",
+  na_dns_system:"system", na_dns_line:(ms,ok)=>ms+" ms · "+ok,
+  na_idle:"idle", na_down:"downloading", na_up:"uploading",
+  na_grade:"grade", na_recs:"Recommendations",
+  na_grade_word:s=>s>=85?"excellent":s>=70?"good":s>=55?"fair":"poor",
+  rec_ok:"No issues: the local network is clean; loss, latency and behavior under load are all within normal ranges.",
+  rec_gw_loss:a=>"Packet loss to the gateway ("+a.loss+"%) — a local network problem: reboot the router and check the cable; on Wi-Fi move closer or switch to a cable.",
+  rec_net_loss:a=>"The gateway replies cleanly, but "+a.loss+"% of packets are lost further out — this looks like the ISP channel: check the cable to the router and into the apartment; if that doesn't help, file a report with the ISP.",
+  rec_latency:a=>"Average response time of "+a.ms+" ms is high (target ≤ 100 ms, ITU-T Y.1541): common causes are mobile internet, a VPN, or a congested channel.",
+  rec_jitter:a=>"Jitter of "+a.j+" ms — latency is unstable (voice and gaming want ≤ 10–15 ms, ITU-T G.1010): a cable instead of Wi-Fi usually fixes it.",
+  rec_bloat_bad:a=>"Latency grows by +"+a.add+" ms under load — the router's buffers are overflowing (bufferbloat): enable SQM/QoS on the router (fq_codel/cake) or cap the rate by 5–10%.",
+  rec_bloat_warn:a=>"Latency grows by +"+a.add+" ms under load — moderate bufferbloat: SQM/QoS on the router would help.",
+  rec_dns_fail:"The system DNS is not responding while alternatives work: switch DNS to 1.1.1.1 or 8.8.8.8.",
+  rec_dns_slow:a=>"The system DNS is noticeably slower than the alternative ("+a.sys+" vs "+a.alt+" ms): try 1.1.1.1 or 8.8.8.8.",
+  rec_wifi_weak:a=>"Wi-Fi signal "+a.pct+"% is weak (stable links want better than 50–60%, roughly −67 dBm per Cisco): move closer to the router or use a cable.",
+  rec_speed_drop:a=>"The last check ↓"+a.cur+" vs a recent maximum of ↓"+a.max+" Mbps: the channel may be busy — see “who is using the network”.",
 }};
 // t(key, ...args): строки и функции-шаблоны текущего языка
 const t = (key, ...args) => {
@@ -1034,7 +1205,8 @@ function setLang(lang){
   applyStatic();
   dotPat = null; // подписи осей перерисуются на новом языке
   if (st){ renderHead(); renderDyn(); drawChart(); renderWatch(st.watch); }
-  if (procOpen) renderProc();
+  if (ndSt) renderND();
+  if (procOpen){ buildProcSort(); renderProc(); } // опции сортировки — на новом языке
   if ($("hoursCal").classList.contains("open")) buildCal(); else syncHoursUI();
   loadAgent();
 }
@@ -1441,6 +1613,15 @@ function renderHead(){
 
   // чип последней проверки
   const chip = $("lastChip");
+  // пауза автопроверок после 429: отдельный чип поверх чипа последней проверки
+  const pc = $("pauseChip");
+  if (st.ratePause && st.nextCheck){
+    pc.className = "chip show warn";
+    setText(pc, t("rate_pause", hhmm(new Date(st.nextCheck))));
+  } else if (pc.className !== "chip"){
+    pc.className = "chip";
+    pc.textContent = "";
+  }
   const last = st.history && st.history[st.history.length-1];
   if (!last){ chip.className = "chip"; return; }
   const err = !!last.err;
@@ -1708,14 +1889,90 @@ const fmtBps = b => {
     : b >= (1<<10) ? (b/(1<<10)).toFixed(1)+" "+u[1] : Math.round(b)+" "+u[2];
 };
 
+// сортировки и фильтры списка; выбор сохраняется, как у фильтров аналитики
+let procFlt = {q: "", sort: "act", active: false, noLocal: false};
+try{ Object.assign(procFlt, JSON.parse(localStorage.getItem("stt_procflt") || "{}")); }catch(e){}
+const saveProcFlt = () => { try{ localStorage.setItem("stt_procflt", JSON.stringify(procFlt)); }catch(e){} };
+
+const PROC_SORTS = {
+  procs: [["act", "proc_s_act"], ["name", "proc_s_name"], ["conns", "proc_s_conns"]],
+  conns: [["proc", "proc_s_proc"], ["addr", "proc_s_addr"]],
+};
+const isLoopback = s => s.startsWith("127.") || s.startsWith("[::1") ||
+  s.startsWith("::1") || s === "localhost";
+
+function buildProcSort(){
+  const opts = PROC_SORTS[procTab];
+  if (!opts.some(([v]) => v === procFlt.sort)) procFlt.sort = opts[0][0];
+  $("procSort").innerHTML = opts.map(([v, key]) =>
+    '<option value="'+v+'">'+esc(t(key))+'</option>').join("");
+  $("procSort").value = procFlt.sort;
+}
+function syncProcFltUI(){
+  $("procActive").classList.toggle("on", !!procFlt.active);
+  $("procNoLocal").classList.toggle("on", !!procFlt.noLocal);
+  setShown($("procActive"), procTab === "procs"); // у соединений нет активности
+}
+function procFilterProcs(rows){
+  return rows.filter(p => {
+    const name = p.name || ("pid "+p.pid);
+    const hosts = p.hosts || [];
+    if (procFlt.q && !(name+" "+hosts.join(" ")+" pid"+p.pid).toLowerCase().includes(procFlt.q)) return false;
+    if (procFlt.active && p.bps < 1) return false;
+    if (procFlt.noLocal && hosts.length > 0 && hosts.every(isLoopback)) return false;
+    return true;
+  });
+}
+function procFilterConns(rows){
+  return rows.filter(c => {
+    const name = c.name || ("pid "+c.pid);
+    if (procFlt.q && !(name+" "+(c.host || "")+" "+(c.remote || "")+" pid"+c.pid).toLowerCase().includes(procFlt.q)) return false;
+    if (procFlt.noLocal && isLoopback(c.remote || "")) return false;
+    return true;
+  });
+}
+const PROC_CMP = {
+  procs: {
+    act:  (a,b) => b.bps - a.bps || b.conns - a.conns,
+    name: (a,b) => (a.name || String(a.pid)).localeCompare(b.name || String(b.pid)),
+    conns:(a,b) => b.conns - a.conns || b.bps - a.bps,
+  },
+  conns: {
+    proc: (a,b) => (a.name || String(a.pid)).localeCompare(b.name || String(b.pid)) ||
+      (a.host || a.remote).localeCompare(b.host || b.remote),
+    addr: (a,b) => (a.host || a.remote).localeCompare(b.host || b.remote),
+  },
+};
+
 $("procBtn").addEventListener("click", () => setProcOpen(!procOpen));
 $("procClose").addEventListener("click", () => setProcOpen(false));
 for (const b of document.querySelectorAll(".ptab"))
   b.addEventListener("click", () => {
     procTab = b.dataset.tab;
     document.querySelectorAll(".ptab").forEach(x => x.classList.toggle("on", x === b));
+    buildProcSort(); // набор сортировок у вкладок разный
+    syncProcFltUI();
     renderProc();
   });
+$("procSearch").addEventListener("input", e => {
+  procFlt.q = e.target.value.trim().toLowerCase();
+  saveProcFlt(); renderProc();
+});
+$("procSort").addEventListener("change", e => {
+  procFlt.sort = e.target.value;
+  saveProcFlt(); renderProc();
+});
+$("procActive").addEventListener("click", () => {
+  procFlt.active = !procFlt.active;
+  syncProcFltUI(); saveProcFlt(); renderProc();
+});
+$("procNoLocal").addEventListener("click", () => {
+  procFlt.noLocal = !procFlt.noLocal;
+  syncProcFltUI(); saveProcFlt(); renderProc();
+});
+buildProcSort();
+syncProcFltUI();
+if (procFlt.q) $("procSearch").value = procFlt.q;
 
 function setProcOpen(v){
   procOpen = v;
@@ -1737,13 +1994,22 @@ function renderProc(){
   $("procHint").textContent = t("proc_refresh", Math.round(rateMs/1000));
   const body = $("procBody");
   if (procTab === "procs"){
-    const rows = pn.procs || [];
-    if (!rows.length){
+    const all = pn.procs || [];
+    if (!all.length){
       body.innerHTML = '<div class="proc-empty">'+esc(t("proc_no_conns"))+'</div>';
       return;
     }
+    const rows = procFilterProcs(all);
+    if (!rows.length){
+      body.innerHTML = '<div class="proc-empty">'+esc(t("proc_flt_empty"))+'</div>';
+      return;
+    }
+    rows.sort(PROC_CMP.procs[procFlt.sort] || PROC_CMP.procs.act);
     body.innerHTML = rows.map(p => {
-      const hosts = (p.hosts || []).join(" · ") + (p.hostsMore ? " +"+p.hostsMore : "");
+      // «без локальных»: убрать loopback из показанных хостов
+      // (строки, где хосты только локальные, отсеяны фильтром выше)
+      const hosts = (procFlt.noLocal ? (p.hosts || []).filter(h => !isLoopback(h)) : (p.hosts || []))
+        .join(" · ") + (p.hostsMore ? " +"+p.hostsMore : "");
       return '<div class="pr-row" title="'+esc(hosts)+'">'+
         '<span class="pr-name">'+esc(p.name || ("pid "+p.pid))+'</span>'+
         '<span class="pr-hosts">'+esc(hosts)+'</span>'+
@@ -1751,11 +2017,17 @@ function renderProc(){
         '<span class="pr-bps'+(p.bps < 1 ? " zero" : "")+'">≈ '+fmtBps(p.bps)+'</span></div>';
     }).join("");
   } else {
-    const rows = pn.conns || [];
-    if (!rows.length){
+    const all = pn.conns || [];
+    if (!all.length){
       body.innerHTML = '<div class="proc-empty">'+esc(t("proc_no_conns"))+'</div>';
       return;
     }
+    const rows = procFilterConns(all);
+    if (!rows.length){
+      body.innerHTML = '<div class="proc-empty">'+esc(t("proc_flt_empty"))+'</div>';
+      return;
+    }
+    rows.sort(PROC_CMP.conns[procFlt.sort] || PROC_CMP.conns.proc);
     body.innerHTML = rows.map(c => {
       const port = c.remote.slice(c.remote.lastIndexOf(":")+1);
       const main = c.host ? c.host+":"+port : c.remote;
@@ -2149,6 +2421,194 @@ $("archOverwrite").addEventListener("click", () => applyArch("overwrite"));
 $("archSkip").addEventListener("click", () => applyArch("skip"));
 $("archCancel").addEventListener("click", () => archOverlayHide());
 
+/* ── анализ сети ───────────────────────────────────────────────────
+   Отдельный опрос /api/netdiag (500 мс, только пока идёт диагностика);
+   язык рекомендаций — на клиенте, поэтому RU/EN переключаются на лету. */
+let ndSt = null, ndPoll = null;
+const ND_PHASES = ["env","ping","dns","bloat","rules"];
+
+async function loadND(){
+  try{
+    const r = await fetch("/api/netdiag", {cache:"no-store"});
+    ndSt = await r.json();
+  }catch(e){ return; }
+  try{ renderND(); }catch(e){ /* разовый сбой рендера не должен глушить опрос */ }
+}
+
+// зоны «больше — хуже» и «меньше — хуже» (пороги = бэкендовые ndT)
+const ndZoneHigh = (v, warn, bad) => v >= bad ? "bad" : v >= warn ? "warn" : "ok";
+const ndZoneLow  = (v, warn, bad) => v <= bad ? "bad" : v <= warn ? "warn" : "ok";
+const ndKv = (label, value, zone) =>
+  '<div class="nd-kv"><span>' + esc(label) + '</span><b' +
+  (zone ? ' class="' + zone + '"' : '') + '>' + esc(String(value)) + '</b></div>';
+// прирост задержки: честный знак, «−» Typographic, не дефис
+const ndSigned = v => (v >= 0 ? "+" : "−") + Math.abs(Math.round(v));
+// мс: десятые для быстрых линков (0.4 мс понятнее, чем «0 мс»)
+const ndMs = v => v < 10 ? v.toFixed(1) : String(Math.round(v));
+
+function renderND(){
+  if (!ndSt) return;
+  const s = ndSt;
+  const running = s.state === "running";
+  const hasData = !!(s.env || (s.ping && s.ping.length) ||
+    (s.dns && s.dns.length) || s.bloat || (s.recs && s.recs.length));
+
+  setShown($("ndIdle"), !running && !hasData && s.state !== "error");
+  setShown($("ndRun"), running);
+  setShown($("ndBody"), !running && hasData);
+
+  // статусная строка по состоянию
+  let cls = "", txt = "";
+  switch (s.state){
+    case "running":  cls = "act"; txt = t("na_s_running"); break;
+    case "done":     cls = "ok";  txt = t("na_s_done"); break;
+    case "stopped":  cls = "act"; txt = t("na_s_stopped"); break;
+    case "error":    cls = "err"; txt = t("error_prefix") + (s.err || t("conn_error")); break;
+    default:         txt = t("na_s_idle");
+  }
+  const stat = $("ndStatus");
+  const statCls = "nd-status" + (cls ? " " + cls : "");
+  if (stat.className !== statCls) stat.className = statCls;
+  if (stat.textContent !== txt){ stat.textContent = txt; stat.title = txt; }
+
+  // строка прошлого запуска
+  const last = $("ndLast");
+  if (!running && s.lastRun){
+    setShown(last, true);
+    setText(last, t("na_last", hhmm(new Date(s.lastRun))));
+  } else setShown(last, false);
+
+  // фазы + прогресс + живой таймер
+  if (running){
+    const idx = ND_PHASES.indexOf(s.phase);
+    document.querySelectorAll("#ndPhases span").forEach((el, i) => {
+      el.classList.toggle("done", i < idx);
+      el.classList.toggle("act", i === idx);
+    });
+    $("ndBar").style.width = Math.round((s.frac || 0) * 100) + "%";
+    setText($("ndTimer"), fmtElapsed((s.elapsedMs || 0) / 1000));
+    const sb = $("ndStopBtn");
+    if (sb.disabled) sb.disabled = false;
+  }
+
+  if (hasData) renderNDBody(s);
+
+  // кнопки по состоянию: старт недоступен в работе, стоп виден в работе
+  const sb = $("ndStartBtn");
+  const lbl = running ? t("na_btn_running")
+    : t(s.state === "idle" ? "na_start" : "na_again");
+  if (sb.textContent !== lbl) sb.textContent = lbl;
+  if (sb.disabled !== running) sb.disabled = running;
+  setShown($("ndStopBtn"), running);
+
+  // во время диагностики замер скорости исказился бы — блокируем
+  const rb = $("runBtn");
+  if (running) rb.disabled = true;
+  else if (st && !st.checking && rb.disabled && !s.running) rb.disabled = false;
+
+  // плотный опрос только пока идёт диагностика
+  if (running && !ndPoll) ndPoll = setInterval(loadND, 500);
+  if (!running && ndPoll){ clearInterval(ndPoll); ndPoll = null; }
+}
+
+function renderNDBody(s){
+  // кольцо балла: во время работы — приглушённое «…», итог — по зонам
+  const ring = $("ndRing");
+  if (s.state === "running"){
+    ring.style.background = "conic-gradient(var(--dimmer) 0deg 8deg, var(--card2) 8deg 360deg)";
+    setText($("ndScore"), "…");
+    ring.title = t("na_s_running");
+  } else {
+    const score = s.score || 0, deg = Math.round(score * 3.6);
+    const col = score >= 85 ? "var(--ok)" : score >= 55 ? "var(--warn)" : "var(--bad)";
+    ring.style.background = "conic-gradient(" + col + " 0deg " + deg +
+      "deg, var(--card2) " + deg + "deg 360deg)";
+    setText($("ndScore"), String(score));
+    ring.title = score + " / 100 — " + t("na_grade_word", score);
+  }
+
+  // окружение
+  const er = [];
+  if (s.env){
+    er.push(ndKv(t("na_env_type"), s.env.wifi ? t("na_env_wifi") : t("na_env_lan"), "ok"));
+    if (s.env.wifi){
+      if (s.env.ssid) er.push(ndKv(t("na_env_ssid"), s.env.ssid));
+      if (s.env.signalPct) er.push(ndKv(t("na_env_sig"), s.env.signalPct + "%",
+        ndZoneLow(s.env.signalPct, 50, 30)));
+    }
+    if (s.env.mtu) er.push(ndKv("MTU", s.env.mtu));
+    if (s.env.gateway) er.push(ndKv(t("na_env_gw"), s.env.gateway));
+  }
+  $("ndEnv").innerHTML = er.join("");
+
+  // пинг-профиль: шлюз = локальная сеть, остальное = канал наружу
+  const pr = (s.ping || []).map(p => {
+    const label = p.scope === "gw" ? t("na_env_gw") : p.host; // IP шлюза уже в окружении
+    const zone = p.recv === 0 ? "bad" : ndZoneHigh(p.lossPct, 2, 10);
+    const val = p.recv === 0 ? t("na_no_reply")
+      : t("na_ping_line", ndMs(p.avgMs), ndMs(p.jitterMs), p.lossPct.toFixed(1));
+    return ndKv(label, val, zone);
+  });
+  $("ndPing").innerHTML = pr.join("");
+
+  // DNS: системный против прямых запросов
+  const dr = (s.dns || []).map(d => {
+    const label = d.label === "system" ? t("na_dns_system") : d.label;
+    const zone = d.ok === 0 ? "bad" : ndZoneHigh(d.avgMs, 50, 150);
+    const val = d.ok === 0 ? t("na_no_reply")
+      : t("na_dns_line", ndMs(d.avgMs), d.ok + "/" + d.probes);
+    return ndKv(label, val, zone);
+  });
+  $("ndDns").innerHTML = dr.join("");
+
+  // задержка под нагрузкой
+  const br = [];
+  if (s.bloat){
+    if (s.bloat.err) br.push(ndKv(t("na_bloat"), s.bloat.err, "bad"));
+    else {
+      br.push(ndKv(t("na_idle"), Math.round(s.bloat.idleMs) + " " + t("ms")));
+      br.push(ndKv(t("na_down"), ndSigned(s.bloat.addDownMs) + " " + t("ms"),
+        ndZoneHigh(s.bloat.addDownMs, 50, 150)));
+      br.push(ndKv(t("na_up"), ndSigned(s.bloat.addUpMs) + " " + t("ms"),
+        ndZoneHigh(s.bloat.addUpMs, 50, 150)));
+      const g = s.bloat.grade || "—";
+      br.push(ndKv(t("na_grade"), g, ["A","B"].includes(g) ? "ok" : ["C","D"].includes(g) ? "warn" : "bad"));
+      if (s.bloat.downMbps > 0) br.push(ndKv("↓ " + t("mbps"), s.bloat.downMbps.toFixed(1)));
+      if (s.bloat.upMbps > 0) br.push(ndKv("↑ " + t("mbps"), s.bloat.upMbps.toFixed(1)));
+    }
+  }
+  $("ndBloat").innerHTML = br.join("");
+
+  // рекомендации: текст на клиенте — язык меняется без перезапуска
+  const recs = s.recs || [];
+  const rc = recs.map(r =>
+    '<div class="nd-rec sev' + r.sev + '"><i></i><div>' +
+    esc(t("rec_" + r.code, r.args || {})) + '</div></div>').join("");
+  $("ndRecs").innerHTML = recs.length
+    ? '<div class="nd-recs-title">' + esc(t("na_recs")) + '</div>' + rc
+    : (s.state === "done"
+      ? '<div class="nd-rec sev1"><i></i><div>' + esc(t("rec_ok")) + '</div></div>'
+      : "");
+}
+
+$("ndStartBtn").addEventListener("click", async () => {
+  $("ndStartBtn").disabled = true;
+  try{
+    const r = await fetch("/api/netdiag/start", {method:"POST"});
+    if (!r.ok){ // 409: занято или идёт замер — показываем почему
+      const el = $("ndStatus");
+      el.className = "nd-status err";
+      el.textContent = (await r.text()) || t("conn_error");
+    }
+  }catch(e){}
+  loadND();
+});
+$("ndStopBtn").addEventListener("click", async () => {
+  $("ndStopBtn").disabled = true;
+  try{ await fetch("/api/netdiag/stop", {method:"POST"}); }catch(e){}
+  loadND();
+});
+
 /* ── тема: тёмная/светлая ──────────────────────────────────────────── */
 $("themeBtn").addEventListener("click", () => {
   const light = document.documentElement.classList.toggle("light");
@@ -2242,10 +2702,15 @@ async function tick(){
       applyStatic();
       dotPat = null;
       if ($("hoursCal").classList.contains("open")) buildCal();
+      if (ndSt) renderND(); // динамический блок анализатора — тоже на новом языке
     }
     $("connLost").classList.remove("show");
     renderHead(); renderDyn(); drawChart(); renderWatch(st.watch);
     renderUpdate();
+    if (st.netdiag === "running"){
+      $("runBtn").disabled = true; // идёт диагностика сети
+      if (!ndPoll) loadND(); // самолечение: плотный опрос мог умереть
+    }
     if (procOpen) loadProcnet();
     loadAgent();
   }catch(e){
@@ -2394,6 +2859,7 @@ window.addEventListener("resize", () => { if (st){ drawChart(); drawHours(); } }
 applyStatic();
 syncHoursUI();
 tick();
+loadND();
 </script>
 </body>
 </html>
