@@ -16,10 +16,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # -X main.version — версия для автообновления (сравнивается с тегом)
-          - { os: windows-latest, asset: SpeedTestTray.exe, flags: '-ldflags "-s -w -H=windowsgui -X main.version=$GITHUB_REF_NAME"' }
-          - { os: ubuntu-latest, asset: SpeedTestTray-linux-x64, flags: '-ldflags "-s -w -X main.version=$GITHUB_REF_NAME"' }
-          - { os: macos-latest, asset: SpeedTestTray-macos-arm64, flags: '-ldflags "-s -w -X main.version=$GITHUB_REF_NAME"' }
+          # -X main.version — версия для автообновления (сравнивается с тегом).
+          # Подставляем ${{ github.ref_name }} (до шелла): $GITHUB_REF_NAME
+          # не раскрывается в PowerShell windows-раннера и версия прошивалась
+          # пустой — автообновление на ней не видело новых релизов.
+          - { os: windows-latest, asset: SpeedTestTray.exe, flags: '-ldflags "-s -w -H=windowsgui -X main.version=${{ github.ref_name }}"' }
+          - { os: ubuntu-latest, asset: SpeedTestTray-linux-x64, flags: '-ldflags "-s -w -X main.version=${{ github.ref_name }}"' }
+          - { os: macos-latest, asset: SpeedTestTray-macos-arm64, flags: '-ldflags "-s -w -X main.version=${{ github.ref_name }}"' }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +38,7 @@ jobs:
       # Intel-маки: кросс-сборка x64 на macos-latest
       - name: build macos x64 (cross)
         if: matrix.os == 'macos-latest'
-        run: GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC="clang -arch x86_64" go build -trimpath -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o SpeedTestTray-macos-x64 .
+        run: GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC="clang -arch x86_64" go build -trimpath -ldflags "-s -w -X main.version=${{ github.ref_name }}" -o SpeedTestTray-macos-x64 .
       - uses: actions/upload-artifact@v4
         if: matrix.os == 'macos-latest'
         with:
